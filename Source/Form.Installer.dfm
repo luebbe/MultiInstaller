@@ -1,4 +1,4 @@
-object Form1: TForm1
+object FormInstall: TFormInstall
   Left = 293
   Top = 145
   BorderStyle = bsDialog
@@ -100,7 +100,7 @@ object Form1: TForm1
         Top = 78
         Width = 195
         Height = 17
-        Caption = 'Compile packages and install on IDE'
+        Caption = 'Compile packages and install in IDE'
         TabOrder = 3
         OnClick = chkCompileInIdeClick
       end

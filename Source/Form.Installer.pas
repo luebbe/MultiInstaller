@@ -28,7 +28,7 @@ uses
   SpComponentInstaller;
 
 type
-  TForm1 = class(TForm)
+  TFormInstall = class(TForm)
     PageControl1: TPageControl;
     tshSelectComponents: TTabSheet;
     tshSelectIde: TTabSheet;
@@ -85,6 +85,7 @@ type
     procedure pbxVersionInfoClick(Sender: TObject);
   private
     FAppPath  : string;
+    FAutoStart: boolean;
     FInstaller: TSpMultiInstaller;
 
     function ChangePage(Next: Boolean): Boolean;
@@ -99,7 +100,7 @@ type
   end;
 
 var
-  Form1: TForm1;
+  FormInstall: TFormInstall;
 
 implementation
 
@@ -108,6 +109,7 @@ implementation
 
 uses
   Winapi.ShellAPI,
+  System.StrUtils,
   System.SysUtils,
   System.UITypes;
 
@@ -130,7 +132,10 @@ resourcestring
 //WMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWM
 { Form UI }
 
-procedure TForm1.FormCreate(Sender: TObject);
+procedure TFormInstall.FormCreate(Sender: TObject);
+var
+  LAutoStart: string;
+  LSetupIni : string;
 begin
   Screen.Cursors[crIDC_HAND] := LoadCursor(0, IDC_HAND);
   pbxVersionInfo.Cursor := crIDC_HAND;
@@ -142,26 +147,36 @@ begin
   lblTitle.Caption := SWelcomeTitle;
   SaveDialog1.InitialDir := FAppPath;
 
-  CreateInstaller(FAppPath + rvSetupIni);
+  // Allow to turn the autostart off via command line. Default:on
+  if FindCmdLineswitch('A', LAutoStart) then
+    FAutoStart := MatchText(LautoStart, ['Yes', 'True', '1'])
+  else
+    FAutoStart := true;
+
+  // Allow to pass the ini file via command line
+  if FindCmdLineswitch('I', LSetupIni) then
+    CreateInstaller(LSetupIni)
+  else
+    CreateInstaller(FAppPath + rvSetupIni);
 
 {$IFDEF SPDEBUGMODE}
   ReportMemoryLeaksOnShutdown := True;
 {$ENDIF}
 end;
 
-procedure TForm1.FormDestroy(Sender: TObject);
+procedure TFormInstall.FormDestroy(Sender: TObject);
 begin
   FInstaller.Free;
 end;
 
-procedure TForm1.FormShow(Sender: TObject);
+procedure TFormInstall.FormShow(Sender: TObject);
 begin
   CloseDelphi;
 
   if DirectoryExists(FInstaller.ComponentPackages.DefaultInstallFolder) then
     begin
       edtInstallFolder.Text := FInstaller.ComponentPackages.DefaultInstallFolder;
-      if chkCompileInIde.Checked then
+      if FAutoStart and chkCompileInIde.Checked then
         begin
           PageControl1.ActivePageIndex := PageControl1.PageCount - 1;
           Timer1.Enabled := True; // Delay it a little for UI responsiveness
@@ -169,13 +184,13 @@ begin
     end;
 end;
 
-procedure TForm1.Timer1Timer(Sender: TObject);
+procedure TFormInstall.Timer1Timer(Sender: TObject);
 begin
   Timer1.Enabled := False;
   Install;
 end;
 
-function TForm1.ChangePage(Next: Boolean): Boolean;
+function TFormInstall.ChangePage(Next: Boolean): Boolean;
 var
   I, C: Integer;
 begin
@@ -222,12 +237,12 @@ begin
   end;
 end;
 
-procedure TForm1.chkCompileInIdeClick(Sender: TObject);
+procedure TFormInstall.chkCompileInIdeClick(Sender: TObject);
 begin
   rgSelectIde.Enabled := chkCompileInIde.Checked;
 end;
 
-procedure TForm1.CreateInstaller(const APath: string);
+procedure TFormInstall.CreateInstaller(const APath: string);
 begin
   FreeAndNil(FInstaller);
 
@@ -240,7 +255,7 @@ begin
     edtInstallFolder.Text := FInstaller.ComponentPackages.DefaultInstallFolder;
 end;
 
-procedure TForm1.FillCheckListBox;
+procedure TFormInstall.FillCheckListBox;
 var
   I, G, P: Integer;
 begin
@@ -269,7 +284,7 @@ begin
     end;
 end;
 
-procedure TForm1.FillRadioGroup;
+procedure TFormInstall.FillRadioGroup;
 var
   IDE: TSpIDEType;
 begin
@@ -291,7 +306,7 @@ begin
     chkCompileInIde.Checked := True;
 end;
 
-function TForm1.ValidateCheckListBox: Boolean;
+function TFormInstall.ValidateCheckListBox: Boolean;
 var
   I: Integer;
 begin
@@ -306,7 +321,7 @@ begin
   btnNext.Enabled := Result;
 end;
 
-procedure TForm1.WMDROPFILES(var Msg: TWMDropFiles);
+procedure TFormInstall.WMDROPFILES(var Msg: TWMDropFiles);
 var
   LDropHandle   : HDROP;
   FileNameLength: Integer;
@@ -336,12 +351,12 @@ begin
   end;
 end;
 
-procedure TForm1.clbSelectComponentsClickCheck(Sender: TObject);
+procedure TFormInstall.clbSelectComponentsClickCheck(Sender: TObject);
 begin
   ValidateCheckListBox;
 end;
 
-procedure TForm1.clbSelectComponentsMeasureItem(Control: TWinControl;
+procedure TFormInstall.clbSelectComponentsMeasureItem(Control: TWinControl;
   Index: Integer; var Height: Integer);
 var
   R: TRect;
@@ -350,7 +365,7 @@ begin
     Height := DrawText(clbSelectComponents.Canvas.Handle, PChar(clbSelectComponents.Items[Index]), -1, R, DT_CALCRECT) + 4;
 end;
 
-procedure TForm1.clbSelectComponentsDrawItem(Control: TWinControl;
+procedure TFormInstall.clbSelectComponentsDrawItem(Control: TWinControl;
   Index: Integer; Rect: TRect; State: TOwnerDrawState);
 begin
   if Index > -1 then
@@ -361,7 +376,7 @@ begin
     end;
 end;
 
-procedure TForm1.pbxVersionInfoPaint(Sender: TObject);
+procedure TFormInstall.pbxVersionInfoPaint(Sender: TObject);
 var
   C: TCanvas;
 begin
@@ -373,7 +388,7 @@ begin
   C.TextOut(0, 0, rvMultiInstallerVersion);
 end;
 
-procedure TForm1.pbxVersionInfoClick(Sender: TObject);
+procedure TFormInstall.pbxVersionInfoClick(Sender: TObject);
 begin
   SpOpenLink(rvMultiInstallerLink);
 end;
@@ -381,33 +396,34 @@ end;
 //WMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWM
 {$REGION 'Actions'}
 
-procedure TForm1.aBackExecute(Sender: TObject);
+
+procedure TFormInstall.aBackExecute(Sender: TObject);
 begin
   ChangePage(False);
 end;
 
-procedure TForm1.aNextExecute(Sender: TObject);
+procedure TFormInstall.aNextExecute(Sender: TObject);
 begin
   ChangePage(True);
 end;
 
-procedure TForm1.aCancelExecute(Sender: TObject);
+procedure TFormInstall.aCancelExecute(Sender: TObject);
 begin
   Close;
 end;
 
-procedure TForm1.aFinishExecute(Sender: TObject);
+procedure TFormInstall.aFinishExecute(Sender: TObject);
 begin
   Close;
 end;
 
-procedure TForm1.aSaveLogExecute(Sender: TObject);
+procedure TFormInstall.aSaveLogExecute(Sender: TObject);
 begin
   if SaveDialog1.Execute then
     memInstallationLog.Lines.SaveToFile(SaveDialog1.FileName);
 end;
 
-procedure TForm1.aBrowseExecute(Sender: TObject);
+procedure TFormInstall.aBrowseExecute(Sender: TObject);
 var
   D: string;
 begin
@@ -421,7 +437,7 @@ end;
 
 { Install }
 
-procedure TForm1.CloseDelphi;
+procedure TFormInstall.CloseDelphi;
 var
   Cancel: Boolean;
 begin
@@ -435,7 +451,7 @@ begin
     Close;
 end;
 
-function TForm1.Install: Boolean;
+function TFormInstall.Install: Boolean;
 var
   I, J, G: Integer;
   IDE    : TSpIDEType;

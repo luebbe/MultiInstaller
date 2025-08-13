@@ -118,6 +118,7 @@
         <DCC_RangeChecking>true</DCC_RangeChecking>
         <DCC_DebugInfoInExe>true</DCC_DebugInfoInExe>
         <Icon_MainIcon>MultiInstaller_Icon.ico</Icon_MainIcon>
+        <Debugger_RunParams>-I:D:\Projekte\DiagRA-MCD\trunk\Build\Tools\Multiinstaller.ini -a:off</Debugger_RunParams>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_2_Win64)'!=''">
         <AppEnableRuntimeThemes>true</AppEnableRuntimeThemes>
@@ -128,7 +129,7 @@
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
         <DCCReference Include="Form.Installer.pas">
-            <Form>Form1</Form>
+            <Form>FormInstall</Form>
         </DCCReference>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
