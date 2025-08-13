@@ -11,12 +11,12 @@ For more info go to: <https://www.silverpointdevelopment.com>
 
 ## Changes in this version
 
+By default the installer uses the setup.ini file from the same folder as the installer executable.
+
 This fork features some useful additions:
 
 - The setup .ini file can be dragged and dropped onto the installer form.  
-  Default: use the setup.ini file from the same folder as the installer executable.
 - The setup .ini file can be passed via the `-I:Setup.ini` command line switch.  
-  Default: use the setup.ini file from the same folder as the installer executable.
 - Autostarting the installer can be turned off via the `-A:off|false|0` command line switch.  
   Default: on.
 - The default installation folder `DefaultInstallFolder` can be relative to the setup .ini file.
