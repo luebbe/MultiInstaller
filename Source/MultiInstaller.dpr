@@ -2,7 +2,7 @@ program MultiInstaller;
 
 uses
   Forms,
-  unit1 in 'unit1.pas' {Form1};
+  Form.Installer in 'Form.Installer.pas' {Form1};
 
 {$R *.res}
 
