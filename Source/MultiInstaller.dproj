@@ -118,7 +118,6 @@
         <DCC_RangeChecking>true</DCC_RangeChecking>
         <DCC_DebugInfoInExe>true</DCC_DebugInfoInExe>
         <Icon_MainIcon>MultiInstaller_Icon.ico</Icon_MainIcon>
-        <Debugger_RunParams>-I:D:\Projekte\DiagRA-MCD\trunk\Build\Tools\Multiinstaller.ini -a:off</Debugger_RunParams>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_2_Win64)'!=''">
         <AppEnableRuntimeThemes>true</AppEnableRuntimeThemes>

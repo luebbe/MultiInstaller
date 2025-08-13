@@ -70,6 +70,7 @@ resourcestring
   SLogErrorDeleting = 'Error deleting %s';
   SLogErrorExecuting = 'Error executing %s';
   SLogErrorCompiling = 'Error compiling %s';
+  SLogErrorRegistering = 'Error registering %s';
 
   SLogCopying = 'Copying:' +  #13#10 + '     %s' + #13#10 + 'To:' + #13#10 + '     %s';
   SLogExecuting = 'Executing:' +  #13#10 + '     %s';
@@ -1175,8 +1176,10 @@ var
   L: TStringList;
   I: Integer;
   S, R: string; // Auxiliary strings
+  LError: string;
 begin
   Result := False;
+  LError := '';
   if FIDEVersion = ideNone then Exit;
   if not Exists then begin
     if Assigned(Log) then
@@ -1282,14 +1285,20 @@ begin
       if Assigned(Log) then
         Log.Text := Log.Text + DosOutput + #13#10;
       if Result then
-        Result := RegisterPackage(Log);
+        begin
+          Result := RegisterPackage(Log);
+          if not Result then
+            LError := SLogErrorRegistering;
+        end
+      else
+        LError := SLogErrorCompiling;
     finally
       DeleteFile(DCCConfig);
     end;
   end;
 
   if not Result and Assigned(Log) then
-    SpWriteLog(Log, SLogErrorCompiling, FDPKFilename, '');
+    SpWriteLog(Log, LError, FDPKFilename, '');
 end;
 
 function TSpDelphiDPKFile.RegisterPackage(Log: TStrings): Boolean;
@@ -1356,6 +1365,22 @@ end;
 { TSpComponentPackageList }
 
 procedure TSpComponentPackageList.LoadFromIni(Filename: string);
+
+  function MakeAbsolutePath(APath:string):string;
+  var
+    LPath:string;
+  begin
+    // Allow to specify the installation path relative to the .ini file
+    if TPath.IsRelativePath(APath) then
+      begin
+        LPath := TPath.GetDirectoryName(FileName);
+        LPath := TPath.Combine([LPath, APath]);
+        Result := TPath.GetFullPath(LPath);
+      end
+    else
+      Result := APath;
+  end;
+
 var
   F: TMemIniFile;
   LSections: TStringList;
@@ -1373,7 +1398,7 @@ begin
     // Read Options
     S := F.ReadString(rvOptionsIniSection, rvDefaultInstallIDE, '');
     FDefaultInstallIDE := TSpDelphiIDE.StringToIDEType(S);
-    FDefaultInstallFolder := F.ReadString(rvOptionsIniSection, rvDefaultInstallFolder, '');
+    FDefaultInstallFolder := MakeAbsolutePath(F.ReadString(rvOptionsIniSection, rvDefaultInstallFolder, ''));
     S := F.ReadString(rvOptionsIniSection, rvMinimumIDE, '');
     FMinimumIDE := TSpDelphiIDE.StringToIDEType(S);
     if FMinimumIDE = ideNone then
@@ -1535,7 +1560,7 @@ begin
         SourcesL.CommaText := Item.SearchPath;
         // Add the destination search path
         for J := 0 to SourcesL.Count - 1 do
-          SourcesL[J] := TPath.Combine(Item.Destination, SourcesL[J]);
+          SourcesL[J] := TPath.GetFullPath(TPath.Combine(Item.Destination, SourcesL[J]));
       end
       else
         SourcesL.Add(Item.Destination);
