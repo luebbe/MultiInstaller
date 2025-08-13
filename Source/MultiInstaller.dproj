@@ -2,7 +2,7 @@
     <PropertyGroup>
         <ProjectGuid>{EBF09947-4C9C-4019-AB2C-5AC10A4CEF07}</ProjectGuid>
         <MainSource>MultiInstaller.dpr</MainSource>
-        <Config Condition="'$(Config)'==''">Debug</Config>
+        <Config Condition="'$(Config)'==''">Release</Config>
         <DCC_DCCCompiler>DCC32</DCC_DCCCompiler>
         <ProjectVersion>20.3</ProjectVersion>
         <Base>True</Base>
