@@ -21,32 +21,32 @@ object Form1: TForm1
     Top = 60
     Width = 495
     Height = 265
-    ActivePage = TabSheet1
+    ActivePage = tshInstallation
     Align = alClient
     Style = tsFlatButtons
     TabOrder = 0
-    object TabSheet1: TTabSheet
-      Caption = 'TabSheet1'
+    object tshSelectComponents: TTabSheet
+      Caption = 'tshSelectComponents'
       TabVisible = False
-      object Label1: TLabel
+      object lblSelectComponents: TLabel
         Left = 8
         Top = 8
         Width = 276
         Height = 13
         Caption = 'You'#39're about to install the following component packages:'
       end
-      object CheckListBox1: TCheckListBox
+      object clbSelectComponents: TCheckListBox
         Left = 8
         Top = 24
         Width = 473
         Height = 201
         Style = lbOwnerDrawVariable
         TabOrder = 0
-        OnClickCheck = CheckListBox1ClickCheck
-        OnDrawItem = CheckListBox1DrawItem
-        OnMeasureItem = CheckListBox1MeasureItem
+        OnClickCheck = clbSelectComponentsClickCheck
+        OnDrawItem = clbSelectComponentsDrawItem
+        OnMeasureItem = clbSelectComponentsMeasureItem
       end
-      object CheckBox1: TCheckBox
+      object chkGetFromGit: TCheckBox
         Left = 8
         Top = 231
         Width = 249
@@ -57,11 +57,11 @@ object Form1: TForm1
         TabOrder = 1
       end
     end
-    object TabSheet2: TTabSheet
-      Caption = 'TabSheet2'
+    object tshSelectIde: TTabSheet
+      Caption = 'tshSelectIde'
       ImageIndex = 1
       TabVisible = False
-      object Label2: TLabel
+      object lblInstallfolder: TLabel
         Left = 8
         Top = 16
         Width = 323
@@ -70,14 +70,14 @@ object Form1: TForm1
           'Select a destination directory to install all the component pack' +
           'ages:'
       end
-      object InstallFolderEdit: TEdit
+      object edtInstallFolder: TEdit
         Left = 8
         Top = 42
         Width = 393
         Height = 21
         TabOrder = 0
       end
-      object ButtonBrowse: TButton
+      object btnInstallFolder: TButton
         Left = 408
         Top = 40
         Width = 75
@@ -85,7 +85,7 @@ object Form1: TForm1
         Action = aBrowse
         TabOrder = 1
       end
-      object RadioGroup1: TRadioGroup
+      object rgSelectIde: TRadioGroup
         Left = 8
         Top = 80
         Width = 473
@@ -95,28 +95,28 @@ object Form1: TForm1
         Enabled = False
         TabOrder = 2
       end
-      object CompileCheckbox: TCheckBox
+      object chkCompileInIde: TCheckBox
         Left = 20
         Top = 78
         Width = 195
         Height = 17
         Caption = 'Compile packages and install on IDE'
         TabOrder = 3
-        OnClick = CompileCheckboxClick
+        OnClick = chkCompileInIdeClick
       end
     end
-    object TabSheet3: TTabSheet
-      Caption = 'TabSheet3'
+    object tshInstallation: TTabSheet
+      Caption = 'tshInstallation'
       ImageIndex = 2
       TabVisible = False
-      object Label3: TLabel
+      object lblInstallation: TLabel
         Left = 8
         Top = 8
         Width = 74
         Height = 13
         Caption = 'Installation log:'
       end
-      object FinishLabel: TLabel
+      object lblInstallationFinished: TLabel
         Left = 8
         Top = 238
         Width = 427
@@ -126,7 +126,7 @@ object Form1: TForm1
           'lick Finish to exit Setup.'
         Visible = False
       end
-      object LogMemo: TMemo
+      object memInstallationLog: TMemo
         Left = 8
         Top = 32
         Width = 473
@@ -137,7 +137,7 @@ object Form1: TForm1
       end
     end
   end
-  object Panel1: TPanel
+  object pnlBottom: TPanel
     Left = 0
     Top = 325
     Width = 495
@@ -150,22 +150,22 @@ object Form1: TForm1
     DesignSize = (
       495
       53)
-    object Bevel2: TBevel
+    object bvlBottom: TBevel
       Left = 162
       Top = 0
       Width = 322
       Height = 9
       Shape = bsBottomLine
     end
-    object PaintBoxLabel: TPaintBox
+    object pbxVersionInfo: TPaintBox
       Left = 15
       Top = 0
-      Width = 144
+      Width = 150
       Height = 14
-      OnClick = PaintBoxLabelClick
-      OnPaint = PaintBoxLabelPaint
+      OnClick = pbxVersionInfoClick
+      OnPaint = pbxVersionInfoPaint
     end
-    object Button1: TButton
+    object btnSaveLog: TButton
       Left = 315
       Top = 18
       Width = 75
@@ -173,7 +173,7 @@ object Form1: TForm1
       Action = aSaveLog
       TabOrder = 4
     end
-    object ButtonFinish: TButton
+    object btnFinish: TButton
       Left = 410
       Top = 18
       Width = 75
@@ -181,7 +181,7 @@ object Form1: TForm1
       Action = aFinish
       TabOrder = 3
     end
-    object ButtonNext: TButton
+    object btnNext: TButton
       Left = 311
       Top = 18
       Width = 75
@@ -190,7 +190,7 @@ object Form1: TForm1
       Anchors = [akRight, akBottom]
       TabOrder = 0
     end
-    object ButtonBack: TButton
+    object btnBack: TButton
       Left = 235
       Top = 18
       Width = 75
@@ -199,7 +199,7 @@ object Form1: TForm1
       Enabled = False
       TabOrder = 1
     end
-    object ButtonCancel: TButton
+    object btnCancel: TButton
       Left = 410
       Top = 18
       Width = 75
@@ -208,7 +208,7 @@ object Form1: TForm1
       TabOrder = 2
     end
   end
-  object Panel2: TPanel
+  object pnlTop: TPanel
     Left = 0
     Top = 0
     Width = 495
@@ -218,7 +218,7 @@ object Form1: TForm1
     Color = clWhite
     ParentBackground = False
     TabOrder = 2
-    object LabelTitle: TLabel
+    object lblTitle: TLabel
       Left = 8
       Top = 15
       Width = 425
@@ -234,7 +234,7 @@ object Form1: TForm1
       Layout = tlCenter
       WordWrap = True
     end
-    object Bevel1: TBevel
+    object bvlTop: TBevel
       Left = 0
       Top = 51
       Width = 495
@@ -242,7 +242,7 @@ object Form1: TForm1
       Align = alBottom
       Shape = bsBottomLine
     end
-    object Image1: TImage
+    object imgLogo: TImage
       Left = 442
       Top = 5
       Width = 48
