@@ -243,6 +243,8 @@ begin
 end;
 
 procedure TFormInstall.CreateInstaller(const APath: string);
+var
+  I: Integer;
 begin
   FreeAndNil(FInstaller);
 
@@ -250,6 +252,15 @@ begin
   FillCheckListBox;
   FillRadioGroup;
   ValidateCheckListBox;
+
+  // Enable Get from Git only when at least one component has a Git URL
+  for I := 0 to FInstaller.ComponentPackages.Count - 1 do
+    if not FInstaller.ComponentPackages[I].Git.IsEmpty then
+      begin
+        chkGetFromGit.Enabled := true;
+        chkGetFromGit.Checked := true;
+        break;
+      end;
 
   if DirectoryExists(FInstaller.ComponentPackages.DefaultInstallFolder) then
     edtInstallFolder.Text := FInstaller.ComponentPackages.DefaultInstallFolder;

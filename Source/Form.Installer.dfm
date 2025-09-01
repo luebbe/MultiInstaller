@@ -21,7 +21,7 @@ object FormInstall: TFormInstall
     Top = 60
     Width = 495
     Height = 265
-    ActivePage = tshInstallation
+    ActivePage = tshSelectComponents
     Align = alClient
     Style = tsFlatButtons
     TabOrder = 0
@@ -52,8 +52,7 @@ object FormInstall: TFormInstall
         Width = 249
         Height = 17
         Caption = 'Get files from GIT repository when available'
-        Checked = True
-        State = cbChecked
+        Enabled = False
         TabOrder = 1
       end
     end
@@ -64,11 +63,11 @@ object FormInstall: TFormInstall
       object lblInstallfolder: TLabel
         Left = 8
         Top = 16
-        Width = 323
+        Width = 358
         Height = 13
         Caption = 
           'Select a destination directory to install all the component pack' +
-          'ages:'
+          'age sources:'
       end
       object edtInstallFolder: TEdit
         Left = 8
