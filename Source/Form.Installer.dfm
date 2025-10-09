@@ -1,7 +1,6 @@
 object FormInstall: TFormInstall
   Left = 293
   Top = 145
-  BorderStyle = bsDialog
   Caption = 'Silverpoint MultiInstaller'
   ClientHeight = 378
   ClientWidth = 495
@@ -21,18 +20,22 @@ object FormInstall: TFormInstall
     Top = 60
     Width = 495
     Height = 265
-    ActivePage = tshSelectComponents
+    ActivePage = tshInstallation
     Align = alClient
     Style = tsFlatButtons
     TabOrder = 0
     object tshSelectComponents: TTabSheet
       Caption = 'tshSelectComponents'
       TabVisible = False
+      DesignSize = (
+        487
+        255)
       object lblSelectComponents: TLabel
         Left = 8
         Top = 8
         Width = 276
         Height = 13
+        Anchors = [akLeft, akTop, akRight]
         Caption = 'You'#39're about to install the following component packages:'
       end
       object clbSelectComponents: TCheckListBox
@@ -40,6 +43,7 @@ object FormInstall: TFormInstall
         Top = 24
         Width = 473
         Height = 201
+        Anchors = [akLeft, akTop, akRight, akBottom]
         Style = lbOwnerDrawVariable
         TabOrder = 0
         OnClickCheck = clbSelectComponentsClickCheck
@@ -51,6 +55,7 @@ object FormInstall: TFormInstall
         Top = 231
         Width = 249
         Height = 17
+        Anchors = [akLeft, akBottom]
         Caption = 'Get files from GIT repository when available'
         Enabled = False
         TabOrder = 1
@@ -60,11 +65,15 @@ object FormInstall: TFormInstall
       Caption = 'tshSelectIde'
       ImageIndex = 1
       TabVisible = False
+      DesignSize = (
+        487
+        255)
       object lblInstallfolder: TLabel
         Left = 8
         Top = 16
         Width = 358
         Height = 13
+        Anchors = [akLeft, akTop, akRight]
         Caption = 
           'Select a destination directory to install all the component pack' +
           'age sources:'
@@ -74,6 +83,7 @@ object FormInstall: TFormInstall
         Top = 42
         Width = 393
         Height = 21
+        Anchors = [akLeft, akTop, akRight]
         TabOrder = 0
       end
       object btnInstallFolder: TButton
@@ -82,6 +92,7 @@ object FormInstall: TFormInstall
         Width = 75
         Height = 25
         Action = aBrowse
+        Anchors = [akTop, akRight]
         TabOrder = 1
       end
       object rgSelectIde: TRadioGroup
@@ -89,6 +100,7 @@ object FormInstall: TFormInstall
         Top = 80
         Width = 473
         Height = 171
+        Anchors = [akLeft, akTop, akRight, akBottom]
         Caption = '  '
         Columns = 2
         Enabled = False
@@ -108,11 +120,15 @@ object FormInstall: TFormInstall
       Caption = 'tshInstallation'
       ImageIndex = 2
       TabVisible = False
+      DesignSize = (
+        487
+        255)
       object lblInstallation: TLabel
         Left = 8
         Top = 8
         Width = 74
         Height = 13
+        Anchors = [akLeft, akTop, akRight]
         Caption = 'Installation log:'
       end
       object lblInstallationFinished: TLabel
@@ -120,6 +136,7 @@ object FormInstall: TFormInstall
         Top = 238
         Width = 427
         Height = 13
+        Anchors = [akLeft, akRight, akBottom]
         Caption = 
           'Setup has finished installing the components on your computer. C' +
           'lick Finish to exit Setup.'
@@ -130,6 +147,7 @@ object FormInstall: TFormInstall
         Top = 32
         Width = 473
         Height = 193
+        Anchors = [akLeft, akTop, akRight, akBottom]
         ReadOnly = True
         ScrollBars = ssBoth
         TabOrder = 0
@@ -154,6 +172,7 @@ object FormInstall: TFormInstall
       Top = 0
       Width = 322
       Height = 9
+      Anchors = [akLeft, akRight, akBottom]
       Shape = bsBottomLine
     end
     object pbxVersionInfo: TPaintBox
@@ -161,6 +180,7 @@ object FormInstall: TFormInstall
       Top = 0
       Width = 150
       Height = 14
+      Anchors = [akLeft, akBottom]
       OnClick = pbxVersionInfoClick
       OnPaint = pbxVersionInfoPaint
     end
@@ -170,6 +190,7 @@ object FormInstall: TFormInstall
       Width = 75
       Height = 25
       Action = aSaveLog
+      Anchors = [akRight, akBottom]
       TabOrder = 4
     end
     object btnFinish: TButton
@@ -178,10 +199,11 @@ object FormInstall: TFormInstall
       Width = 75
       Height = 25
       Action = aFinish
+      Anchors = [akRight, akBottom]
       TabOrder = 3
     end
     object btnNext: TButton
-      Left = 311
+      Left = 315
       Top = 18
       Width = 75
       Height = 25
@@ -195,6 +217,7 @@ object FormInstall: TFormInstall
       Width = 75
       Height = 25
       Action = aBack
+      Anchors = [akRight, akBottom]
       Enabled = False
       TabOrder = 1
     end
@@ -204,6 +227,7 @@ object FormInstall: TFormInstall
       Width = 75
       Height = 25
       Action = aCancel
+      Anchors = [akRight, akBottom]
       TabOrder = 2
     end
   end
@@ -217,11 +241,15 @@ object FormInstall: TFormInstall
     Color = clWhite
     ParentBackground = False
     TabOrder = 2
+    DesignSize = (
+      495
+      60)
     object lblTitle: TLabel
       Left = 8
       Top = 15
       Width = 425
       Height = 29
+      Anchors = [akLeft, akTop, akRight]
       AutoSize = False
       Caption = 'Title'
       Font.Charset = ANSI_CHARSET
@@ -246,6 +274,7 @@ object FormInstall: TFormInstall
       Top = 5
       Width = 48
       Height = 48
+      Anchors = [akTop, akRight]
       AutoSize = True
       Picture.Data = {
         07544269746D6170361B0000424D361B00000000000036000000280000003000
