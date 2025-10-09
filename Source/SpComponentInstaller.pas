@@ -33,14 +33,13 @@ Development notes:
 
 interface
 
-{$WARN SYMBOL_PLATFORM OFF}
-{$WARN UNIT_PLATFORM OFF}
 {$BOOLEVAL OFF}                     // Unit depends on short-circuit boolean evaluation
 
 {$R 'SpComponentInstallerRes.res'}  // Has EmptyResourceFile.res file as a resource used by TSpDelphiDPKFile.CreateAndCopyEmptyResIfNeeded
 
 uses
-  Windows, Messages, SysUtils, Classes, Forms, Contnrs, Generics.Collections;
+  System.Classes,
+  System.Generics.Collections;
 
 resourcestring
   SLogStartUnzip =
@@ -107,11 +106,6 @@ type
     ideDelphiFlorence    // D37
     );
 
-  TSpPlatform = (
-    pltWin32,
-    pltWin64
-    );
-
   TSpIDETypeRec = record
     IDEVersion: string;
     IDEName: string;
@@ -142,6 +136,7 @@ const
 
 type
   TSpIDEPersonality = (persDelphiWin32, persDelphiNET, persCPPBuilder);
+  TSpPlatform = (pltWin32, pltWin64);
 
   TSpDelphiIDE = class
   private
@@ -169,36 +164,6 @@ type
     // SearchPath
     class function GetSearchPath(IDE: TSpIDEType; CPPBuilderPath: Boolean): string;
     class procedure AddToSearchPath(SourcesL: TStrings; IDE: TSpIDEType);
-  end;
-
-  TSpDelphiDPKFile = class
-  private
-    FDPKFilename   : string;
-    FBPLFilename   : string;
-    FExists        : Boolean;
-    FOnlyRuntime   : Boolean;
-    FOnlyDesigntime: Boolean;
-    FDescription   : string;
-    FLibSuffix     : string;
-    FIDEVersion    : TSpIDEType;
-    procedure CreateAndCopyEmptyResIfNeeded;
-    function RegisterPackage(Log: TStrings): Boolean;
-  public
-    property DPKFilename   : string read FDPKFilename;
-    property BPLFilename   : string read FBPLFilename;
-    property Exists        : Boolean read FExists;
-    property OnlyRuntime   : Boolean read FOnlyRuntime;
-    property OnlyDesigntime: Boolean read FOnlyDesigntime;
-    property Description   : string read FDescription;
-    property LibSuffix     : string read FLibSuffix;
-    property IDEVersion    : TSpIDEType read FIDEVersion;
-    constructor Create(const Filename: string; IDE: TSpIDEType); virtual;
-    function CompilePackage(DCC: string; SourcesL, IncludesL, Log: TStrings; TempDir: string = ''): Boolean;
-  end;
-
-  TSpDelphiDPKFilesList = class(TObjectList<TSpDelphiDPKFile>)
-  public
-    procedure Sort; reintroduce;
   end;
 
   TSpActionType = (satNone, satCopy, satCopyRun, satRun);
@@ -296,10 +261,20 @@ function SpStringToActionType(S: string): TSpActionType;
 implementation
 
 uses
-  ActiveX, ShellApi, ShlObj, IniFiles, Registry,
+  Winapi.ShellAPI,
+  Winapi.ShlObj,
+  Winapi.Windows,
+  System.IniFiles,
+  System.Win.Registry,
+  System.IOUtils,
+  System.StrUtils,
+  System.SysUtils,
   System.Zip, // Abbrevia is not needed anymore
-  Vcl.FileCtrl, System.IOUtils, StrUtils, Generics.Defaults,
-  Xml.XMLIntf, Xml.XMLDoc, themes;
+  System.Generics.Defaults,
+  Vcl.FileCtrl,
+  Vcl.Forms,
+  Xml.XMLIntf,
+  Xml.XMLDoc;
 
 const
   rvCount                                      = 'Count';
@@ -321,6 +296,37 @@ const
   ActionTypes: array [TSpActionType] of string = ('none', 'copy', 'copyandrun', 'run');
   IDEPersonalityRegNameTypes: array [TSpIDEPersonality] of string = ('Delphi.Win32', 'Delphi.NET', 'BCB');
 
+type
+  TSpDelphiDPKFile = class
+  private
+    FDPKFilename   : string;
+    FBPLFilename   : string;
+    FExists        : Boolean;
+    FOnlyRuntime   : Boolean;
+    FOnlyDesigntime: Boolean;
+    FDescription   : string;
+    FLibSuffix     : string;
+    FIDEVersion    : TSpIDEType;
+    procedure CreateAndCopyEmptyResIfNeeded;
+    function RegisterPackage(Log: TStrings): Boolean;
+  public
+    property DPKFilename   : string read FDPKFilename;
+    property BPLFilename   : string read FBPLFilename;
+    property Exists        : Boolean read FExists;
+    property OnlyRuntime   : Boolean read FOnlyRuntime;
+    property OnlyDesigntime: Boolean read FOnlyDesigntime;
+    property Description   : string read FDescription;
+    property LibSuffix     : string read FLibSuffix;
+    property IDEVersion    : TSpIDEType read FIDEVersion;
+    constructor Create(const Filename: string; IDE: TSpIDEType); virtual;
+    function CompilePackage(DCC: string; SourcesL, IncludesL, Log: TStrings; TempDir: string = ''): Boolean;
+  end;
+
+  TSpDelphiDPKFilesList = class(TObjectList<TSpDelphiDPKFile>)
+  public
+    procedure Sort; reintroduce;
+  end;
+
 //WMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWM
 { Helpers }
 
@@ -340,7 +346,7 @@ begin
     L.DelimitedText := S;
     Result := L.IndexOf(SubStr) > -1;
   finally
-    L.free;
+    L.Free;
   end;
 end;
 
@@ -498,7 +504,7 @@ end;
 
 function SpFileOperation(Origin, Destination: string; Operation: Cardinal): Boolean;
 var
-  F: TShFileOpStruct;
+  F: TSHFileOpStruct;
 begin
   Result := False;
    // Operation can be: FO_COPY, FO_MOVE, FO_DELETE, FO_RENAME
@@ -649,7 +655,7 @@ end;
 procedure SpIniLoadStringList(L: TStringList; IniFilename, Section: string; NamePrefix: string = '');
 var
   F   : TMemIniFile;
-  I, C: integer;
+  I, C: Integer;
 begin
   if not Assigned(L) then
     Exit;
@@ -658,7 +664,7 @@ begin
     L.Clear;
     C := F.ReadInteger(Section, NamePrefix + rvCount, -1);
     for I := 0 to C - 1 do
-      L.Add(F.ReadString(Section, NamePrefix + inttostr(I), ''));
+      L.Add(F.ReadString(Section, NamePrefix + IntToStr(I), ''));
   finally
     F.Free;
   end;
@@ -667,7 +673,7 @@ end;
 procedure SpIniSaveStringList(L: TStringList; IniFilename, Section: string; NamePrefix: string = '');
 var
   F: TMemIniFile;
-  I: integer;
+  I: Integer;
 begin
   if not Assigned(L) then
     Exit;
@@ -740,12 +746,12 @@ begin
   if CPPBuilderPath then
     begin
       Name := 'LibraryPath';
-      Key := Key + '\C++\Paths' // '\C++\Paths\Win32\LibraryPath' with no space in the middle for C++Builder XE2 and above
+      Key := Key + '\C++\Paths'; // '\C++\Paths\Win32\LibraryPath' with no space in the middle for C++Builder XE2 and above
     end
   else
     begin
       Name := 'Search Path';
-      Key := Key + '\Library'
+      Key := Key + '\Library';
     end;
   Key := Key + SpGetPlatform(APlatform);
 end;
@@ -1072,7 +1078,7 @@ begin
               S := S + ';';
             S := S + SourcesL[I];
             SpIDESearchPathRegKey(IDE, Key, Name, False, pltWin32); //##LO Add Win64 Support later
-            SpWriteRegValue(Key, Name, S)
+            SpWriteRegValue(Key, Name, S);
           end;
 
       // Add the directory to the C++Builder search path registry entry
@@ -1084,7 +1090,7 @@ begin
               S := S + ';';
             S := S + SourcesL[I];
             SpIDESearchPathRegKey(IDE, Key, Name, True, pltWin32); //##LO Add Win64 Support later
-            SpWriteRegValue(Key, Name, S)
+            SpWriteRegValue(Key, Name, S);
           end;
     end;
 end;
@@ -1305,7 +1311,7 @@ begin
       try
         Result := SpExecuteDosCommand(CommandLine, WorkDir, DOSOutput) = 0;
         if Assigned(Log) then
-          Log.Text := Log.Text + DosOutput + sLineBreak;
+          Log.Text := Log.Text + DOSOutput + sLineBreak;
         if Result then
           begin
             Result := RegisterPackage(Log);
@@ -1315,7 +1321,7 @@ begin
         else
           LError := SLogErrorCompiling;
       finally
-        DeleteFile(DCCConfig);
+        System.SysUtils.DeleteFile(DCCConfig);
       end;
     end;
 
@@ -1339,7 +1345,7 @@ begin
   if FOnlyRuntime then
     begin
       SpDeleteRegValue(RegKey, BPL);
-      Result := True
+      Result := True;
     end
   else
     if FOnlyDesigntime and TFile.Exists(BPL) then
@@ -1399,7 +1405,7 @@ procedure TSpComponentPackageList.LoadFromIni(Filename: string);
     // Allow to specify the installation path relative to the .ini file
     if TPath.IsRelativePath(APath) then
       begin
-        LPath := TPath.GetDirectoryName(FileName);
+        LPath := TPath.GetDirectoryName(Filename);
         LPath := TPath.Combine([LPath, APath]);
         Result := TPath.GetFullPath(LPath);
       end
@@ -1411,7 +1417,7 @@ var
   F        : TMemIniFile;
   LSections: TStringList;
   Entry    : TSpComponentPackage;
-  I, Aux   : integer;
+  I, Aux   : Integer;
   S        : string;
   A        : TSpIDEType;
 begin
@@ -1475,7 +1481,7 @@ function TSpComponentPackageList.ExtractAllZips(
   Log: TStrings): Boolean;
 var
   GitChecked: Boolean;
-  I         : integer;
+  I         : Integer;
   Item      : TSpComponentPackage;
 begin
   GitChecked := False;
@@ -1576,7 +1582,7 @@ end;
 function TSpComponentPackageList.CompileAll(BaseFolder: string; IDE: TSpIDEType; Log: TStrings): Boolean;
 var
   DCC, TempDir                 : string;
-  I, J                         : integer;
+  I, J                         : Integer;
   Item                         : TSpComponentPackage;
   SourcesL, CompileL, IncludesL: TStringList;
   DPKList                      : TSpDelphiDPKFilesList;
@@ -1671,7 +1677,7 @@ var
   L, V        : TStringList;
   ExecuteEntry: TSpExecuteEntry;
   Action      : TSpActionType;
-  I           : integer;
+  I           : Integer;
 begin
   L := TStringList.Create;
   V := TStringList.Create;
