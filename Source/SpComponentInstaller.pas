@@ -43,18 +43,22 @@ uses
   Windows, Messages, SysUtils, Classes, Forms, Contnrs, Generics.Collections;
 
 resourcestring
-  SLogStartUnzip = '=========================================' + #13#10 +
-    'Unzipping - Cloning' + #13#10 +
+  SLogStartUnzip =
+    '=========================================' + sLineBreak +
+    'Unzipping - Cloning' + sLineBreak +
     '=========================================';
-  SLogStartExecute = '=========================================' + #13#10 +
-    'Executing patches' + #13#10 +
+  SLogStartExecute =
+    '=========================================' + sLineBreak +
+    'Executing patches' + sLineBreak +
     '=========================================';
-  SLogStartCompile = '=========================================' + #13#10 +
-    'Compiling and installing:' + #13#10 +
-    '%s' + #13#10 +
+  SLogStartCompile =
+    '=========================================' + sLineBreak +
+    'Compiling and installing:' + sLineBreak +
+    '%s' + sLineBreak +
     '=========================================';
-  SLogEnd = '=========================================' + #13#10 +
-    'Finished' + #13#10 +
+  SLogEnd =
+    '=========================================' + sLineBreak +
+    'Finished' + sLineBreak +
     '=========================================';
 
   SLogInvalidPath = 'Error: %s doesn''t exist.';
@@ -72,27 +76,20 @@ resourcestring
   SLogErrorCompiling = 'Error compiling %s';
   SLogErrorRegistering = 'Error registering %s';
 
-  SLogCopying = 'Copying:' + #13#10 + '     %s' + #13#10 + 'To:' + #13#10 + '     %s';
-  SLogExecuting = 'Executing:' + #13#10 + '     %s';
-  SLogExtracting = 'Extracting:' + #13#10 + '     %s' + #13#10 + 'To:' + #13#10 + '     %s';
-  SLogGitCloning = 'Git cloning:' + #13#10 + '     %s' + #13#10 + 'To:' + #13#10 + '     %s';
+  SLogCopying = 'Copying:' + sLineBreak + '     %s' + sLineBreak + 'To:' + sLineBreak + '     %s';
+  SLogExecuting = 'Executing:' + sLineBreak + '     %s';
+  SLogExtracting = 'Extracting:' + sLineBreak + '     %s' + sLineBreak + 'To:' + sLineBreak + '     %s';
+  SLogGitCloning = 'Git cloning:' + sLineBreak + '     %s' + sLineBreak + 'To:' + sLineBreak + '     %s';
   SLogCompiling = 'Compiling Package: %s';
   SLogInstalling = 'Installing Package: %s';
-  SLogFinished = 'All the component packages have been successfully installed.' + #13#10 + 'Elapsed time: %f secs.';
+  SLogFinished = 'All the component packages have been successfully installed.' + sLineBreak + 'Elapsed time: %f secs.';
 
-  SGitCloneCommand = 'GIT.EXE clone --verbose --progress %s %s';
+  SGitCloneCommand = 'GIT.EXE clone --verbose --progress "%s" "%s"';
   SGitIsInstalledCommand = 'GIT.EXE --version';
 
 type
   TSpIDEType = (         // [IDE-Change-Update]
     ideNone,             //
-    ideDelphi7,          // D7
-    ideDelphi2005,       // D9
-    ideDelphi2006,       // D10
-    ideDelphi2007,       // D11
-    ideDelphi2009,       // D12
-    ideDelphi2010,       // D14
-    ideDelphiXE,         // D15
     ideDelphiXE2,        // D16
     ideDelphiXE3,        // D17
     ideDelphiXE4,        // D18
@@ -106,7 +103,13 @@ type
     ideDelphiRio,        // D26
     ideDelphiSydney,     // D27
     ideDelphiAlexandria, // D28
-    ideDelphiAthens      // D29
+    ideDelphiAthens,     // D29
+    ideDelphiFlorence    // D37
+    );
+
+  TSpPlatform = (
+    pltWin32,
+    pltWin64
     );
 
   TSpIDETypeRec = record
@@ -120,13 +123,6 @@ const
   // [IDE-Change-Update]
   IDETypes: array [TSpIDEType] of TSpIDETypeRec = (
     (IDEVersion: 'None'; IDEName: 'None'; IDERegistryPath: 'None'; IDERADStudioVersion: ''),
-    (IDEVersion: 'D7'; IDEName: 'Delphi 7'; IDERegistryPath: 'SOFTWARE\Borland\Delphi\7.0'; IDERADStudioVersion: ''),
-    (IDEVersion: 'D9'; IDEName: 'Delphi 2005'; IDERegistryPath: 'SOFTWARE\Borland\BDS\3.0'; IDERADStudioVersion: '3.0'),
-    (IDEVersion: 'D10'; IDEName: 'Developer Studio 2006'; IDERegistryPath: 'SOFTWARE\Borland\BDS\4.0'; IDERADStudioVersion: '4.0'),
-    (IDEVersion: 'D11'; IDEName: 'RAD Studio 2007'; IDERegistryPath: 'SOFTWARE\Borland\BDS\5.0'; IDERADStudioVersion: '5.0'),
-    (IDEVersion: 'D12'; IDEName: 'RAD Studio 2009'; IDERegistryPath: 'SOFTWARE\CodeGear\BDS\6.0'; IDERADStudioVersion: '6.0'),
-    (IDEVersion: 'D14'; IDEName: 'RAD Studio 2010'; IDERegistryPath: 'SOFTWARE\CodeGear\BDS\7.0'; IDERADStudioVersion: '7.0'),
-    (IDEVersion: 'D15'; IDEName: 'RAD Studio XE'; IDERegistryPath: 'SOFTWARE\Embarcadero\BDS\8.0'; IDERADStudioVersion: '8.0'),
     (IDEVersion: 'D16'; IDEName: 'RAD Studio XE2'; IDERegistryPath: 'SOFTWARE\Embarcadero\BDS\9.0'; IDERADStudioVersion: '9.0'),
     (IDEVersion: 'D17'; IDEName: 'RAD Studio XE3'; IDERegistryPath: 'SOFTWARE\Embarcadero\BDS\10.0'; IDERADStudioVersion: '10.0'),
     (IDEVersion: 'D18'; IDEName: 'RAD Studio XE4'; IDERegistryPath: 'SOFTWARE\Embarcadero\BDS\11.0'; IDERADStudioVersion: '11.0'),
@@ -140,7 +136,8 @@ const
     (IDEVersion: 'D26'; IDEName: 'RAD Studio 10.3 Rio'; IDERegistryPath: 'SOFTWARE\Embarcadero\BDS\20.0'; IDERADStudioVersion: '20.0'),
     (IDEVersion: 'D27'; IDEName: 'RAD Studio 10.4 Sydney'; IDERegistryPath: 'SOFTWARE\Embarcadero\BDS\21.0'; IDERADStudioVersion: '21.0'),
     (IDEVersion: 'D28'; IDEName: 'RAD Studio 11 Alexandria'; IDERegistryPath: 'SOFTWARE\Embarcadero\BDS\22.0'; IDERADStudioVersion: '22.0'),
-    (IDEVersion: 'D29'; IDEName: 'RAD Studio 12 Athens'; IDERegistryPath: 'SOFTWARE\Embarcadero\BDS\23.0'; IDERADStudioVersion: '23.0')
+    (IDEVersion: 'D29'; IDEName: 'RAD Studio 12 Athens'; IDERegistryPath: 'SOFTWARE\Embarcadero\BDS\23.0'; IDERADStudioVersion: '23.0'),
+    (IDEVersion: 'D37'; IDEName: 'RAD Studio 13 Florence'; IDERegistryPath: 'SOFTWARE\Embarcadero\BDS\37.0'; IDERADStudioVersion: '37.0')
     );
 
 type
@@ -384,7 +381,7 @@ const
   BufferSize           = 255;
   NativeLineFeed       = Char(#10);
   NativeCarriageReturn = Char(#13);
-  NativeCrLf           = string(#13#10);
+  NativeCrLf           = string(sLineBreak);
 var
   Buffer       : array [0 .. BufferSize] of AnsiChar;
   TempOutput   : string;
@@ -551,7 +548,7 @@ begin
   CommandLine := Format(SGitCloneCommand, [AGit, DestinationPath]);
   Result := SpExecuteDosCommand(CommandLine, '', DosOutput) = 0;
   if Assigned(Log) then
-    Log.Text := Log.Text + DosOutput + #13#10;
+    Log.Text := Log.Text + DosOutput + sLineBreak;
 end;
 
 function SpIsGitInstalled(Log: TStrings): Boolean;
@@ -560,7 +557,7 @@ var
 begin
   Result := SpExecuteDosCommand(SGitIsInstalledCommand, '', DosOutput) = 0;
   if Assigned(Log) then
-    Log.Text := Log.Text + DosOutput + #13#10;
+    Log.Text := Log.Text + DosOutput + sLineBreak;
 end;
 
 //WMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWM
@@ -702,6 +699,16 @@ end;
 //WMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWM
 { IDE }
 
+function SpGetPlatform(APlatform: TSpPlatform): string;
+begin
+  if APlatform = pltWin32 then
+    Result := '\Win32'
+  else if APlatform = pltWin64 then
+    Result := '\Win64'
+  else
+    Result := '';
+end;
+
 function SpActionTypeToString(A: TSpActionType): string;
 begin
   Result := ActionTypes[A];
@@ -721,7 +728,7 @@ begin
       end;
 end;
 
-procedure SpIDESearchPathRegKey(IDE: TSpIDEType; out Key, Name: string; CPPBuilderPath: Boolean);
+procedure SpIDESearchPathRegKey(IDE: TSpIDEType; out Key, Name: string; CPPBuilderPath: Boolean; APlatform: TSpPlatform);
 begin
   Key := '';
   Name := '';
@@ -730,31 +737,17 @@ begin
 
   // [IDE-Change]
   Key := IDETypes[IDE].IDERegistryPath;
-  if CPPBuilderPath and (IDE >= ideDelphi2006) then
+  if CPPBuilderPath then
     begin
-      if IDE = ideDelphi2006 then
-        begin
-      // '\CppPaths\SearchPath' with no space in the middle for C++Builder 2006
-          Key := Key + '\CppPaths';
-          Name := 'SearchPath';
-        end
-      else
-        begin
-          Name := 'LibraryPath';
-          if IDE >= ideDelphiXE2 then
-            Key := Key + '\C++\Paths\Win32' // '\C++\Paths\Win32\LibraryPath' with no space in the middle for C++Builder XE2 and above
-          else
-            Key := Key + '\C++\Paths';      // '\C++\Paths\LibraryPath' with no space in the middle for C++Builder 2009 and above
-        end;
+      Name := 'LibraryPath';
+      Key := Key + '\C++\Paths' // '\C++\Paths\Win32\LibraryPath' with no space in the middle for C++Builder XE2 and above
     end
   else
     begin
       Name := 'Search Path';
-      if IDE >= ideDelphiXE2 then
-        Key := Key + '\Library\Win32'
-      else
-        Key := Key + '\Library';
+      Key := Key + '\Library'
     end;
+  Key := Key + SpGetPlatform(APlatform);
 end;
 
 //WMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWM
@@ -777,13 +770,10 @@ begin
   if IDE = ideNone then
     Exit;
 
-  if IDE >= ideDelphi2006 then
-    begin
-      IDEPersonalityTypeToString(IDEPersonality, PersReg);
-      SpReadRegValue(IDETypes[IDE].IDERegistryPath + '\Personalities', PersReg, S);
-      if S <> '' then
-        Result := True;
-    end;
+  IDEPersonalityTypeToString(IDEPersonality, PersReg);
+  SpReadRegValue(IDETypes[IDE].IDERegistryPath + '\Personalities', PersReg, S);
+  if S <> '' then
+    Result := True;
 end;
 
 class function TSpDelphiIDE.StringToIDEType(S: string): TSpIDEType;
@@ -826,27 +816,21 @@ end;
 class function TSpDelphiIDE.GetBPLOutputDir(IDE: TSpIDEType): string;
 begin
   // BPL Output Dir
-  if IDE >= ideDelphiXE2 then
-    SpReadRegValue(IDETypes[IDE].IDERegistryPath + '\Library\Win32', 'Package DPL Output', Result)
-  else
-    SpReadRegValue(IDETypes[IDE].IDERegistryPath + '\Library', 'Package DPL Output', Result);
+  SpReadRegValue(IDETypes[IDE].IDERegistryPath + '\Library\Win32', 'Package DPL Output', Result);
   Result := TSpDelphiIDE.ExpandMacros(Result, IDE);
 end;
 
 class function TSpDelphiIDE.GetDCPOutputDir(IDE: TSpIDEType): string;
 begin
   // DCP Output Dir
-  if IDE >= ideDelphiXE2 then
-    SpReadRegValue(IDETypes[IDE].IDERegistryPath + '\Library\Win32', 'Package DCP Output', Result)
-  else
-    SpReadRegValue(IDETypes[IDE].IDERegistryPath + '\Library', 'Package DCP Output', Result);
+  SpReadRegValue(IDETypes[IDE].IDERegistryPath + '\Library\Win32', 'Package DCP Output', Result);
   Result := TSpDelphiIDE.ExpandMacros(Result, IDE);
 end;
 
 class function TSpDelphiIDE.ReadEnvironmentProj(IDE: TSpIDEType; NamesAndValues: TStringList): Boolean;
 // Reads environment.proj file.
 // In newer versions of RAD Studio (2007 and up) the macros are stored in:
-// C:\Users\x\AppData\Roaming\Embarcadero\BDS\19.0\environment.proj
+// C:\Users\<user>\AppData\Roaming\Embarcadero\BDS\19.0\environment.proj
 // This file is used by MSBuild
 // https://docs.microsoft.com/en-us/visualstudio/msbuild/how-to-use-environment-variables-in-a-build?view=vs-2017
 var
@@ -856,7 +840,7 @@ var
   Node, Root: IXMLNode;
 begin
   Result := False;
-  if not Assigned(NamesAndValues) or (IDE < ideDelphi2007) then
+  if not Assigned(NamesAndValues) then
     Exit;
   NamesAndValues.Clear;
 
@@ -873,8 +857,8 @@ begin
               Root := Root.ChildNodes.FindNode('PropertyGroup');
               if Root <> nil then
                 begin
-          // Add $(Delphi), $(BDS), $(BDSPROJECTSDIR), $(BDSCOMMONDIR),
-          // $(BDSUSERDIR), $(BDSLIB) macros
+                  // Add $(Delphi), $(BDS), $(BDSPROJECTSDIR), $(BDSCOMMONDIR),
+                  // $(BDSUSERDIR), $(BDSLIB) macros
                   Node := Root.ChildNodes.FindNode('Delphi');
                   if Node <> nil then
                     NamesAndValues.AddPair('Delphi', Node.Text);
@@ -934,7 +918,7 @@ var
   DefaultL : TStringList;
 begin
   // In newer versions of RAD Studio (2007 and up) the macros are stored in:
-  // C:\Users\x\AppData\Roaming\Embarcadero\BDS\19.0\environment.proj
+  // C:\Users\<user>\AppData\Roaming\Embarcadero\BDS\19.0\environment.proj
   //
   // When the IDE is opened it reads environment.proj and sets the macros as
   // system Environment Variables.
@@ -959,81 +943,62 @@ begin
       NamesAndValues.Values['Delphi'] := GetIDEDir(IDE);
 
     // $(BDS)
-    if IDE >= ideDelphi2005 then
-      if not ReplaceWithDefault(NamesAndValues, DefaultL, 'BDS') then
-        NamesAndValues.Values['BDS'] := GetIDEDir(IDE);
+    if not ReplaceWithDefault(NamesAndValues, DefaultL, 'BDS') then
+      NamesAndValues.Values['BDS'] := GetIDEDir(IDE);
 
     // $(BDSCOMMONDIR)
     // It points to a different directory according to how you install Delphi:
     // If you choose All Users during installation:
-    //   C:\Users\Public\Documents\Embarcadero\Studio\19.0
+    //   C:\Users\Public\Documents\Embarcadero\Studio\<version>
     // If you choose Just Me during installation:
-    //   C:\Users\x\Documents\Embarcadero\Studio\19.0
-    if IDE >= ideDelphi2007 then
-      ReplaceWithDefault(NamesAndValues, DefaultL, 'BDSCOMMONDIR');
+    //   C:\Users\<user>\Documents\Embarcadero\Studio\<version>
+    ReplaceWithDefault(NamesAndValues, DefaultL, 'BDSCOMMONDIR');
 
     // $(BDSPROJECTSDIR)
-    // Example: C:\Users\x\Documents\Embarcadero\Studio\Projects
-    if IDE >= ideDelphi2005 then
-      begin
-      // This macro can be overrided by adding a string value called
-      // 'DefaultProjectsDirectory' containing a different directory to:
-      // HKCU\Software\Borland\BDS\4.0\Globals
-        SpReadRegValue(IDETypes[IDE].IDERegistryPath + '\Globals', 'DefaultProjectsDirectory', R);
-        if not TDirectory.Exists(R) then
-          if not ReplaceWithDefault(NamesAndValues, DefaultL, 'BDSPROJECTSDIR') then
-            begin
+    // Example: C:\Users\<user>\Documents\Embarcadero\Studio\Projects
+    // This macro can be overridden by adding a string value called
+    // 'DefaultProjectsDirectory' containing a different directory to:
+    // HKCU\Software\Borland\BDS\4.0\Globals
+    SpReadRegValue(IDETypes[IDE].IDERegistryPath + '\Globals', 'DefaultProjectsDirectory', R);
+    if not TDirectory.Exists(R) then
+      if not ReplaceWithDefault(NamesAndValues, DefaultL, 'BDSPROJECTSDIR') then
+        begin
           // Try to guess it
           // Since BDSPROJECTSDIR is not defined in the registry we have to find it
           // manually, looking for all the localized dir names in MyDocuments folder
-              MyDocs := TPath.GetDocumentsPath;
-              if IDE in [ideDelphi2005, ideDelphi2006] then
-                begin
-            // For older BDS check if it's My Documents\Borland Studio Projects
-                  for I := 0 to High(DirArrayBDS) do
-                    begin
-                      R := TPath.Combine(MyDocs, DirArrayBDS[I]);
-                      if TDirectory.Exists(R) then
-                        Break;
-                    end;
-                end
-              else
-                begin
-            // For newer versions check if it's C:\Users\x\Documents\Embarcadero\Studio\Projects
-            // or C:\Users\x\Documents\RAD Studio\Projects
-                  for I := 0 to High(DirArrayRAD) do
-                    begin
-                      if IDE >= ideDelphiXE6 then
-                        R := TPath.Combine(MyDocs, 'Embarcadero\Studio\' + DirArrayRAD[I])
-                      else
-                        R := TPath.Combine(MyDocs, 'RAD Studio\' + DirArrayRAD[I]);
-                      if TDirectory.Exists(R) then
-                        Break;
-                    end;
-                end;
-              if TDirectory.Exists(R) then
-                NamesAndValues.Values['BDSPROJECTSDIR'] := R;
-            end;
-      end;
-
-    // $(BDSUSERDIR)
-    // Example: C:\Users\x\Documents\Embarcadero\Studio\19.0
-    if IDE >= ideDelphi2007 then
-      if not ReplaceWithDefault(NamesAndValues, DefaultL, 'BDSUSERDIR') then
-        begin
-        // Try to guess it
-        // Get BDSPROJECTSDIR and add IDE version
-          R := NamesAndValues.Values['BDSPROJECTSDIR'];
-          if TDirectory.Exists(R) then
+          MyDocs := TPath.GetDocumentsPath;
+          // For newer versions check if it's C:\Users\<user>\Documents\Embarcadero\Studio\Projects
+          // or C:\Users\<user>\Documents\RAD Studio\Projects
+          for I := 0 to High(DirArrayRAD) do
             begin
-              R := TPath.Combine(ExtractFilePath(R), IDETypes[IDE].IDERADStudioVersion);
+              if IDE >= ideDelphiXE6 then
+                R := TPath.Combine(MyDocs, 'Embarcadero\Studio\' + DirArrayRAD[I])
+              else
+                R := TPath.Combine(MyDocs, 'RAD Studio\' + DirArrayRAD[I]);
               if TDirectory.Exists(R) then
-                NamesAndValues.Values['BDSUSERDIR'] := R;
+                Break;
             end;
+          if TDirectory.Exists(R) then
+            NamesAndValues.Values['BDSPROJECTSDIR'] := R;
         end;
 
+    // $(BDSUSERDIR)
+    // Example: C:\Users\<user>\Documents\Embarcadero\Studio\<version>
+    if not ReplaceWithDefault(NamesAndValues, DefaultL, 'BDSUSERDIR') then
+      begin
+        // Try to guess it
+        // Get BDSPROJECTSDIR and add IDE version
+        R := NamesAndValues.Values['BDSPROJECTSDIR'];
+        if TDirectory.Exists(R) then
+          begin
+            R := TPath.Combine(ExtractFilePath(R), IDETypes[IDE].IDERADStudioVersion);
+            if TDirectory.Exists(R) then
+              NamesAndValues.Values['BDSUSERDIR'] := R;
+          end;
+      end;
+
     // $(BDSLIB)
-    // Example: C:\Program Files\Embarcadero\Studio\19.0\lib
+    // Example: C:\Program Files\Embarcadero\Studio\<version>\lib
     if not ReplaceWithDefault(NamesAndValues, DefaultL, 'BDSLIB') then
       NamesAndValues.Values['BDSLIB'] := TPath.Combine(GetIDEDir(IDE), 'lib');
 
@@ -1084,7 +1049,7 @@ begin
   Result := '';
   if IDE <> ideNone then
     begin
-      SpIDESearchPathRegKey(IDE, Key, Name, CPPBuilderPath);
+      SpIDESearchPathRegKey(IDE, Key, Name, CPPBuilderPath, pltWin32); //##LO Add Win64 Support later
       SpReadRegValue(Key, Name, Result);
     end;
 end;
@@ -1098,7 +1063,7 @@ begin
     begin
       SourcesL[I] := ExpandMacros(ExcludeTrailingPathDelimiter(SourcesL[I]), IDE);
 
-    // Add the directory to the Delphi Win32 search path registry entry
+      // Add the directory to the Delphi Win32 search path registry entry
       S := GetSearchPath(IDE, False);
       if (S <> '') and (SourcesL[I] <> '') then
         if not SpStringSearch(S, SourcesL[I]) then
@@ -1106,24 +1071,21 @@ begin
             if S[Length(S)] <> ';' then
               S := S + ';';
             S := S + SourcesL[I];
-            SpIDESearchPathRegKey(IDE, Key, Name, False);
+            SpIDESearchPathRegKey(IDE, Key, Name, False, pltWin32); //##LO Add Win64 Support later
             SpWriteRegValue(Key, Name, S)
           end;
 
-    // Add the directory to the C++Builder search path registry entry
-      if IDE >= ideDelphi2006 then
-        begin
-          S := GetSearchPath(IDE, True);
-          if (S <> '') and (SourcesL[I] <> '') then
-            if not SpStringSearch(S, SourcesL[I]) then
-              begin
-                if S[Length(S)] <> ';' then
-                  S := S + ';';
-                S := S + SourcesL[I];
-                SpIDESearchPathRegKey(IDE, Key, Name, True);
-                SpWriteRegValue(Key, Name, S)
-              end;
-        end;
+      // Add the directory to the C++Builder search path registry entry
+      S := GetSearchPath(IDE, True);
+      if (S <> '') and (SourcesL[I] <> '') then
+        if not SpStringSearch(S, SourcesL[I]) then
+          begin
+            if S[Length(S)] <> ';' then
+              S := S + ';';
+            S := S + SourcesL[I];
+            SpIDESearchPathRegKey(IDE, Key, Name, True, pltWin32); //##LO Add Win64 Support later
+            SpWriteRegValue(Key, Name, S)
+          end;
     end;
 end;
 
@@ -1248,47 +1210,47 @@ begin
     end
   else
     begin
-    // [IDE Bug]: dcc32.exe won't execute if -Q option is not used
-    // But it works fine without -Q if ShellExecute is used:
-    // ShellExecute(Application.Handle, 'open', DCC, ExtractFileName(FDPKFilename), ExtractFilePath(FDPKFilename), SW_SHOWNORMAL);
-    // There must be something wrong with SpExecuteDosCommand
-    // Example: dcc32.exe -Q sptbxlib.dpk
+      // [IDE Bug]: dcc32.exe won't execute if -Q option is not used
+      // But it works fine without -Q if ShellExecute is used:
+      // ShellExecute(Application.Handle, 'open', DCC, ExtractFileName(FDPKFilename), ExtractFilePath(FDPKFilename), SW_SHOWNORMAL);
+      // There must be something wrong with SpExecuteDosCommand
+      // Example: dcc32.exe -Q sptbxlib.dpk
       CommandLine := DCC + ' -Q  ' + TPath.GetFileName(FDPKFilename);
       WorkDir := TPath.GetDirectoryName(FDPKFilename);
 
-    // Create and save DCC32.CFG file on the Package directory
-    // Example of cfg file:
-    // -U"$(BDSLIB)\$(Platform)\release";"C:\TB2K\Source";"C:\SpTBXLib\Source"
-    // -R"C:\SpTBXLib\Source"
-    // -LE"C:\Users\Public\Documents\Embarcadero\Studio\19.0\Bpl"
-    // -LN"C:\Users\Public\Documents\Embarcadero\Studio\19.0\Dcp"
-    // -NB"C:\Users\Public\Documents\Embarcadero\Studio\19.0\Dcp"
-    // -NSSystem.Win;Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;Bde;Vcl;Vcl.Imaging;Vcl.Touch;Vcl.Samples;Vcl.Shell;System;Xml;Data;Datasnap;Web;Soap;Winapi
-    // -N"C:\Users\x\AppData\Local\Temp\SpMultiInstall"
-    // -JL
+      // Create and save DCC32.CFG file on the Package directory
+      // Example of cfg file:
+      // -U"$(BDSLIB)\$(Platform)\release";"C:\TB2K\Source";"C:\SpTBXLib\Source"
+      // -R"C:\SpTBXLib\Source"
+      // -LE"C:\Users\Public\Documents\Embarcadero\Studio\<version>\Bpl"
+      // -LN"C:\Users\Public\Documents\Embarcadero\Studio\<version>\Dcp"
+      // -NB"C:\Users\Public\Documents\Embarcadero\Studio\<version>\Dcp"
+      // -NSSystem.Win;Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;Bde;Vcl;Vcl.Imaging;Vcl.Touch;Vcl.Samples;Vcl.Shell;System;Xml;Data;Datasnap;Web;Soap;Winapi
+      // -N"C:\Users\<user>\AppData\Local\Temp\SpMultiInstall"
+      // -JL
       L := TStringList.Create;
       try
-      // Add the SourcesL directories to the registry
+        // Add the SourcesL directories to the registry
         TSpDelphiIDE.AddToSearchPath(SourcesL, FIDEVersion);
 
-      // Expand SearchPath, replace $(Delphi) and $(BDS) with real directories
-      // and enclose the paths with " " to transform it to a valid
-      // comma delimited string for the -U switch.
+        // Expand SearchPath, replace $(Delphi) and $(BDS) with real directories
+        // and enclose the paths with " " to transform it to a valid
+        // comma delimited string for the -U switch.
         L.Text := TSpDelphiIDE.ExpandMacros(TSpDelphiIDE.GetSearchPath(FIDEVersion, False), FIDEVersion);
-        L.Text := StringReplace(L.Text, ';', #13#10, [rfReplaceAll, rfIgnoreCase]);
+        L.Text := StringReplace(L.Text, ';', sLineBreak, [rfReplaceAll, rfIgnoreCase]);
         for I := 0 to L.Count - 1 do
           L[I] := '"' + L[I] + '"';
-        S := StringReplace(L.Text, #13#10, ';', [rfReplaceAll, rfIgnoreCase]);
+        S := StringReplace(L.Text, sLineBreak, ';', [rfReplaceAll, rfIgnoreCase]);
         if S[Length(S)] = ';' then
           Delete(S, Length(S), 1);
 
-      // Save the DCC32.CFG file on the Package directory
+        // Save the DCC32.CFG file on the Package directory
         DCCConfig := TPath.Combine(WorkDir, 'DCC32.CFG');
         R := IDETypes[FIDEVersion].IDERegistryPath;
         L.Clear;
-      // SearchPath
+        // SearchPath
         L.Add('-U' + S);
-      // Resource directories, add the source folder as the default *.dcr search folder
+        // Resource directories, add the source folder as the default *.dcr search folder
         S := '';
         for I := 0 to SourcesL.Count - 1 do
           S := S + ';' + SourcesL[I];
@@ -1298,21 +1260,19 @@ begin
             S := '"' + S + '"';
             L.Add('-R' + S);
           end;
-      // BPL Output
+        // BPL Output
         S := TSpDelphiIDE.GetBPLOutputDir(FIDEVersion);
         L.Add('-LE"' + S + '"');
-      // DCP Output
+        // DCP Output
         S := TSpDelphiIDE.GetDCPOutputDir(FIDEVersion);
         L.Add('-LN"' + S + '"');
-      // BPI Output for the compiled packages, required for C++Builder 2006 and above,
-      // same as DCP Output
-        if FIDEVersion >= ideDelphi2006 then
-          L.Add('-NB"' + S + '"');
-      // Unit namespaces for Delphi XE2:
-        if FIDEVersion >= ideDelphiXE2 then
-          L.Add('-NSSystem.Win;Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;Bde;Vcl;Vcl.Imaging;Vcl.Touch;Vcl.Samples;Vcl.Shell;System;Xml;Data;Datasnap;Web;Soap;Winapi');
-      // Includes, dcc32.exe accepts Includes as a semicolon separated string
-      // enclosed by double quotes, e.g. "C:\dir1;C:\dir2;C:\dir3"
+        // BPI Output for the compiled packages, required for C++Builder 2006 and above,
+        // same as DCP Output
+        L.Add('-NB"' + S + '"');
+        // Unit namespaces for Delphi XE2 and up:
+        L.Add('-NSSystem.Win;Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;Bde;Vcl;Vcl.Imaging;Vcl.Touch;Vcl.Samples;Vcl.Shell;System;Xml;Data;Datasnap;Web;Soap;Winapi');
+        // Includes, dcc32.exe accepts Includes as a semicolon separated string
+        // enclosed by double quotes, e.g. "C:\dir1;C:\dir2;C:\dir3"
         S := '';
         for I := 0 to IncludesL.Count - 1 do
           S := S + ';' + IncludesL[I];
@@ -1322,31 +1282,30 @@ begin
             S := '"' + S + '"';
             L.Add('-I' + S);
           end;
-      // DCU Output for the compiled packages
+        // DCU Output for the compiled packages
         if TempDir <> '' then
           L.Add('-N"' + TempDir + '"');
-      // Add -JL compiler switch to make Hpp files required for C++Builder 2006 and above
-      // This switch is undocumented:
-      // http://groups.google.com/group/borland.public.cppbuilder.ide/browse_thread/thread/456bece4c5665459/0c4c61ecec179ca8
-        if FIDEVersion >= ideDelphi2006 then
-          if TSpDelphiIDE.PersonalityInstalled(FIDEVersion, persCPPBuilder) then
-            L.Add('-JL');
+        // Add -JL compiler switch to make Hpp files required for C++Builder 2006 and above
+        // This switch is undocumented:
+        // http://groups.google.com/group/borland.public.cppbuilder.ide/browse_thread/thread/456bece4c5665459/0c4c61ecec179ca8
+        if TSpDelphiIDE.PersonalityInstalled(FIDEVersion, persCPPBuilder) then
+          L.Add('-JL');
 
         L.SaveToFile(DCCConfig);
       finally
         L.Free;
       end;
 
-    // Create and copy an empty res file if needed.
-    // Some component libraries like VirtualTreeView don't include .res files.
+      // Create and copy an empty res file if needed.
+      // Some component libraries like VirtualTreeView don't include .res files.
       CreateAndCopyEmptyResIfNeeded;
 
-    // Compile
+      // Compile
       SpWriteLog(Log, SLogCompiling, FDPKFilename);
       try
         Result := SpExecuteDosCommand(CommandLine, WorkDir, DOSOutput) = 0;
         if Assigned(Log) then
-          Log.Text := Log.Text + DosOutput + #13#10;
+          Log.Text := Log.Text + DosOutput + sLineBreak;
         if Result then
           begin
             Result := RegisterPackage(Log);
@@ -1511,7 +1470,8 @@ begin
   end;
 end;
 
-function TSpComponentPackageList.ExtractAllZips(Source, Destination: string;
+function TSpComponentPackageList.ExtractAllZips(
+  Source, Destination: string;
   Log: TStrings): Boolean;
 var
   GitChecked: Boolean;
@@ -1531,10 +1491,10 @@ begin
   for I := 0 to Count - 1 do
     begin
       Item := Items[I];
-    // Expand ZipFile
+      // Expand ZipFile
       if Item.ZipFile <> '' then
         Item.ZipFile := TPath.Combine(Source, Item.ZipFile);
-    // Expand Destination
+      // Expand Destination
       if Item.Destination <> '' then
         Item.Destination := TPath.Combine(Destination, Item.Destination);
       if TFile.Exists(Item.ZipFile) then
@@ -1627,8 +1587,7 @@ begin
       Result := True;
       Exit;
     end
-  else
-    if not TSpDelphiIDE.Installed(IDE) then
+  else if not TSpDelphiIDE.Installed(IDE) then
     begin
       SpWriteLog(Log, SLogInvalidIDE, IDETypes[IDE].IDEName);
       Exit;
@@ -1646,11 +1605,11 @@ begin
         Item := Items[I];
         SpWriteLog(Log, SLogStartCompile, Item.Name);
 
-      // Expand Search Path
+        // Expand Search Path
         if Item.SearchPath <> '' then
           begin
             SourcesL.CommaText := Item.SearchPath;
-        // Add the destination search path
+            // Add the destination search path
             for J := 0 to SourcesL.Count - 1 do
               SourcesL[J] := TPath.GetFullPath(TPath.Combine(Item.Destination, SourcesL[J]));
           end
@@ -1662,16 +1621,16 @@ begin
           sitNotInstallable:
             ; // do nothing
           sitSearchPathOnly:
-          // If the package is not installable add the SearchPath to the registry
-          // This is useful when installing utility libraries that doesn't have
-          // components to install, for example GraphicEx, GDI+, DirectX, etc
+            // If the package is not installable add the SearchPath to the registry
+            // This is useful when installing utility libraries that doesn't have
+            // components to install, for example GraphicEx, GDI+, DirectX, etc
             TSpDelphiIDE.AddToSearchPath(SourcesL, IDE);
           sitInstallable:
             begin
               IncludesL := TStringList.Create;
               DPKList := TSpDelphiDPKFilesList.Create;
               try
-              // Expand Packages
+                // Expand Packages
                 CompileL := TStringList.Create;
                 try
                   CompileL.CommaText := Item.PackageList[IDE];
@@ -1680,11 +1639,11 @@ begin
                 finally
                   CompileL.Free;
                 end;
-              // Runtime packages must be compiled first
+                // Runtime packages must be compiled first
                 DPKList.Sort;
-              // Expand Includes
+                // Expand Includes
                 IncludesL.CommaText := StringReplace(Item.Includes, rvBaseFolder, ExcludeTrailingPathDelimiter(BaseFolder), [rfReplaceAll, rfIgnoreCase]);
-              // Compile and Install
+                // Compile and Install
                 for J := 0 to DPKList.Count - 1 do
                   if not DPKList[J].CompilePackage(DCC, SourcesL, IncludesL, Log, TempDir) then
                     Exit;
@@ -1756,7 +1715,7 @@ var
         SpWriteLog(Log, SLogExecuting, S);
         if SpExecuteDosCommand(S, Item.Destination, DosOutput) = 0 then
           begin
-            Log.Text := Log.Text + DosOutput + #13#10;
+            Log.Text := Log.Text + DosOutput + sLineBreak;
             Result := True;
           end
         else
@@ -1839,9 +1798,7 @@ begin
             SpWriteLog(Log, SLogEnd, '');
             Log.Add(Format(SLogFinished, [Secs]));
 
-          // [IDE-Change]
-            if IDE >= ideDelphi2007 then
-              begin
+            // [IDE-Change]
             // From the Delphi 2007 readme:
             // http://edn.embarcadero.com/article/36648
             // If you your component installer updates paths in Delphi's registry to include paths
@@ -1855,8 +1812,7 @@ begin
             // The EnvOptions.proj file is in:
             // Vista/7/8: C:\Users\...\AppData\Roaming\Borland\BDS\5.0
             //            C:\Users\...\AppData\Roaming\Embarcadero\BDS\15.0
-                SpWriteRegValue(IDETypes[IDE].IDERegistryPath + '\Globals', 'ForceEnvOptionsUpdate', '1');
-              end;
+            SpWriteRegValue(IDETypes[IDE].IDERegistryPath + '\Globals', 'ForceEnvOptionsUpdate', '1');
 
             Result := True;
           end;
