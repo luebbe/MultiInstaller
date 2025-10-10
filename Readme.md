@@ -40,7 +40,7 @@ The initial developer of this package is Robert Lee.
 
 Requirements:
 
-- RAD Studio XE or newer
+- RAD Studio XE2 or newer
 
 ## Getting Started
 

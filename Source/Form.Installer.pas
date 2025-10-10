@@ -115,7 +115,7 @@ uses
   System.UITypes;
 
 const
-  rvMultiInstallerVersion = 'Silverpoint MultiInstaller 3.5.10';
+  rvMultiInstallerVersion = 'Silverpoint MultiInstaller 3.6.0';
   rvMultiInstallerLink    = 'http://www.silverpointdevelopment.com';
   rvSetupIni              = 'Setup.Ini';
   crIDC_HAND              = 32649;

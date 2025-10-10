@@ -140,16 +140,16 @@ type
 
   TSpPlatformHelper = record helper for TSpPlatform
   private
+    function GetDccConfig: string;
     function GetDccPath: string;
     function GetKnownPackages: string;
     function GetName: string;
-    function GetOutputDir: string;
     function GetRegKey: string;
   public
+    property DccConfig    : string read GetDccConfig;
     property DccPath      : string read GetDccPath;
     property KnownPackages: string read GetKnownPackages;
     property Name         : string read GetName;
-    property OutputDir    : string read GetOutputDir;
     property RegKey       : string read GetRegKey;
   end;
 
@@ -157,7 +157,8 @@ type
   private
     class var FCachedMacrosCommaDelimited: string;
     class var FCachedMacrosIDE           : TSpIDEType;
-    class procedure GetMacros(IDE: TSpIDEType; NamesAndValues: TStringList);
+    class var FCachedMacrosPlatform      : TSpPlatform;
+    class procedure GetMacros(IDE: TSpIDEType; APlatform: TSpPlatform; NamesAndValues: TStringList);
   public
     // IDE
     class function Installed(IDE: TSpIDEType): Boolean;
@@ -174,7 +175,7 @@ type
 
     // Macros
     class function ReadEnvironmentProj(IDE: TSpIDEType; NamesAndValues: TStringList): Boolean;
-    class function ExpandMacros(S: string; IDE: TSpIDEType): string;
+    class function ExpandMacros(S: string; IDE: TSpIDEType; APlatform: TSpPlatform): string;
 
     // SearchPath
     class function GetSearchPath(IDE: TSpIDEType; APlatform: TSpPlatform; CPPBuilderPath: Boolean): string;
@@ -325,6 +326,8 @@ type
     procedure CreateAndCopyEmptyResIfNeeded;
     function RegisterPackage(APlatform: TSpPlatform; Log: TStrings): Boolean;
   public
+    constructor Create(const Filename: string; IDE: TSpIDEType); virtual;
+    function CompilePackage(APlatform: TSpPlatform; SourcesL, IncludesL, Log: TStrings; TempDir: string = ''): Boolean;
     property DPKFilename   : string read FDPKFilename;
     property BPLFilename   : string read FBPLFilename;
     property Exists        : Boolean read FExists;
@@ -333,8 +336,6 @@ type
     property Description   : string read FDescription;
     property LibSuffix     : string read FLibSuffix;
     property IDEVersion    : TSpIDEType read FIDEVersion;
-    constructor Create(const Filename: string; IDE: TSpIDEType); virtual;
-    function CompilePackage(APlatform: TSpPlatform; SourcesL, IncludesL, Log: TStrings; TempDir: string = ''): Boolean;
   end;
 
   TSpDelphiDPKFilesList = class(TObjectList<TSpDelphiDPKFile>)
@@ -349,6 +350,11 @@ type
 
 { TSpPlatformHelper }
 
+function TSpPlatformHelper.GetDccConfig: string;
+begin
+  Result := IfThen(Self = pltWin32, 'dcc32.cfg', 'dcc64.cfg');
+end;
+
 function TSpPlatformHelper.GetDccPath: string;
 begin
   Result := IfThen(Self = pltWin32, 'dcc32.exe', 'dcc64.exe');
@@ -362,11 +368,6 @@ end;
 function TSpPlatformHelper.GetName: string;
 begin
   Result := IfThen(Self = pltWin32, 'Win32', 'Win64');
-end;
-
-function TSpPlatformHelper.GetOutputDir: string;
-begin
-  Result := IfThen(Self = pltWin32, '', 'Win64');
 end;
 
 function TSpPlatformHelper.GetRegKey: string;
@@ -542,8 +543,7 @@ begin
     CloseHandle(PipeWrite);
   CloseHandle(PipeRead);
 
-  if TempOutput <> '' then
-    OutputString := OutputString + MuteCRTerminatedLines(TempOutput);
+  OutputString := MuteCRTerminatedLines(TempOutput);
 end;
 
 function SpFileOperation(Origin, Destination: string; Operation: Cardinal): Boolean;
@@ -780,7 +780,7 @@ begin
   if CPPBuilderPath then
     begin
       Name := 'LibraryPath';
-      Key := Key + '\C++\Paths'; // '\C++\Paths\Win32\LibraryPath' with no space in the middle for C++Builder XE2 and above
+      Key := Key + '\C++\Paths'; // '\C++\Paths\<platform>\LibraryPath' with no space in the middle for C++Builder XE2 and above
     end
   else
     begin
@@ -856,15 +856,15 @@ end;
 class function TSpDelphiIDE.GetBPLOutputDir(IDE: TSpIDEType; APlatform: TSpPlatform): string;
 begin
   // BPL Output Dir
-  SpReadRegValue(IDETypes[IDE].IDERegistryPath + '\Library' + APlatform.OutputDir, 'Package DPL Output', Result);
-  Result := TSpDelphiIDE.ExpandMacros(Result, IDE);
+  SpReadRegValue(IDETypes[IDE].IDERegistryPath + '\Library' + APlatform.RegKey, 'Package DPL Output', Result);
+  Result := TSpDelphiIDE.ExpandMacros(Result, IDE, APlatform);
 end;
 
 class function TSpDelphiIDE.GetDCPOutputDir(IDE: TSpIDEType; APlatform: TSpPlatform): string;
 begin
   // DCP Output Dir
-  SpReadRegValue(IDETypes[IDE].IDERegistryPath + '\Library' + APlatform.OutputDir, 'Package DCP Output', Result);
-  Result := TSpDelphiIDE.ExpandMacros(Result, IDE);
+  SpReadRegValue(IDETypes[IDE].IDERegistryPath + '\Library' + APlatform.RegKey, 'Package DCP Output', Result);
+  Result := TSpDelphiIDE.ExpandMacros(Result, IDE, APlatform);
 end;
 
 class function TSpDelphiIDE.ReadEnvironmentProj(IDE: TSpIDEType; NamesAndValues: TStringList): Boolean;
@@ -892,30 +892,30 @@ begin
         begin
           Doc := TXMLDocument.Create(Filename);
           Root := Doc.ChildNodes.FindNode('Project');
-          if Root <> nil then
+          if Assigned(Root) then
             begin
               Root := Root.ChildNodes.FindNode('PropertyGroup');
-              if Root <> nil then
+              if Assigned(Root) then
                 begin
                   // Add $(Delphi), $(BDS), $(BDSPROJECTSDIR), $(BDSCOMMONDIR),
                   // $(BDSUSERDIR), $(BDSLIB) macros
                   Node := Root.ChildNodes.FindNode('Delphi');
-                  if Node <> nil then
+                  if Assigned(Node) then
                     NamesAndValues.AddPair('Delphi', Node.Text);
                   Node := Root.ChildNodes.FindNode('BDS');
-                  if Node <> nil then
+                  if Assigned(Node) then
                     NamesAndValues.AddPair('BDS', Node.Text);
                   Node := Root.ChildNodes.FindNode('BDSPROJECTSDIR');
-                  if Node <> nil then
+                  if Assigned(Node) then
                     NamesAndValues.AddPair('BDSPROJECTSDIR', Node.Text);
                   Node := Root.ChildNodes.FindNode('BDSCOMMONDIR');
-                  if Node <> nil then
+                  if Assigned(Node) then
                     NamesAndValues.AddPair('BDSCOMMONDIR', Node.Text);
                   Node := Root.ChildNodes.FindNode('BDSUSERDIR');
-                  if Node <> nil then
+                  if Assigned(Node) then
                     NamesAndValues.AddPair('BDSUSERDIR', Node.Text);
                   Node := Root.ChildNodes.FindNode('BDSLIB');
-                  if Node <> nil then
+                  if Assigned(Node) then
                     NamesAndValues.AddPair('BDSLIB', Node.Text);
                   Result := True;
                 end;
@@ -924,7 +924,7 @@ begin
     end;
 end;
 
-class procedure TSpDelphiIDE.GetMacros(IDE: TSpIDEType; NamesAndValues: TStringList);
+class procedure TSpDelphiIDE.GetMacros(IDE: TSpIDEType; APlatform: TSpPlatform; NamesAndValues: TStringList);
 // Get $(Delphi), $(BDS), $(BDSPROJECTSDIR), $(BDSCOMMONDIR),
 // $(BDSUSERDIR), $(BDSLIB) macros and IDE Environment Variables Overrides
 // with full directory paths.
@@ -940,7 +940,7 @@ class procedure TSpDelphiIDE.GetMacros(IDE: TSpIDEType; NamesAndValues: TStringL
         I := DefaultL.IndexOfName(Macro);
         if I >= 0 then
           begin
-        // No override found, use default value
+            // No override found, use default value
             OverrideL.Values[Macro] := DefaultL.ValueFromIndex[I];
             Result := True;
           end;
@@ -1044,17 +1044,18 @@ begin
 
     // $(PLATFORM)
     // Not sure were to find this macro
-    // Since we're using DCC32 to compile assume Win32
-    NamesAndValues.Values['PLATFORM'] := 'Win32';
+    // Assume the platform name
+    NamesAndValues.Values['PLATFORM'] := APlatform.Name;
 
     FCachedMacrosCommaDelimited := NamesAndValues.CommaText;
     FCachedMacrosIDE := IDE;
+    FCachedMacrosPlatform := APlatform;
   finally
     DefaultL.Free;
   end;
 end;
 
-class function TSpDelphiIDE.ExpandMacros(S: string; IDE: TSpIDEType): string;
+class function TSpDelphiIDE.ExpandMacros(S: string; IDE: TSpIDEType; APlatform: TSpPlatform): string;
 // Replace $(Delphi), $(BDS), $(BDSPROJECTSDIR), $(BDSCOMMONDIR),
 // $(BDSUSERDIR), $(BDSLIB) macros and IDE Environment Variables Overrides
 // with full directory paths.
@@ -1069,10 +1070,10 @@ begin
 
   L := TStringList.Create;
   try
-    if (FCachedMacrosIDE = IDE) and not FCachedMacrosCommaDelimited.IsEmpty then
+    if (FCachedMacrosIDE = IDE) and (FCachedMacrosPlatform = APlatform) and not FCachedMacrosCommaDelimited.IsEmpty then
       L.CommaText := FCachedMacrosCommaDelimited // use the cached macros
     else
-      GetMacros(IDE, L);
+      GetMacros(IDE, APlatform, L);
     // Replace all
     for I := 0 to L.Count - 1 do
       Result := StringReplace(Result, '$(' + L.Names[I] + ')', ExcludeTrailingPathDelimiter(L.ValueFromIndex[I]), [rfReplaceAll, rfIgnoreCase]);
@@ -1100,9 +1101,9 @@ var
 begin
   for I := 0 to SourcesL.Count - 1 do
     begin
-      SourcesL[I] := ExpandMacros(ExcludeTrailingPathDelimiter(SourcesL[I]), IDE);
+      SourcesL[I] := ExpandMacros(ExcludeTrailingPathDelimiter(SourcesL[I]), IDE, APlatform);
 
-      // Add the directory to the Delphi Win32 search path registry entry
+      // Add the directory to the Delphi Win32/Win64 search path registry entry
       S := GetSearchPath(IDE, APlatform, False);
       if (S <> '') and (SourcesL[I] <> '') then
         if not SpStringSearch(S, SourcesL[I]) then
@@ -1263,7 +1264,7 @@ begin
       CommandLine := DCC + ' -Q  ' + TPath.GetFileName(FDPKFilename);
       WorkDir := TPath.GetDirectoryName(FDPKFilename);
 
-      // Create and save DCC32.CFG file on the Package directory
+      // Create and save DCC32/64.CFG file on the Package directory
       // Example of cfg file:
       // -U"$(BDSLIB)\$(Platform)\release";"C:\TB2K\Source";"C:\SpTBXLib\Source"
       // -R"C:\SpTBXLib\Source"
@@ -1281,7 +1282,7 @@ begin
         // Expand SearchPath, replace $(Delphi) and $(BDS) with real directories
         // and enclose the paths with " " to transform it to a valid
         // comma delimited string for the -U switch.
-        L.Text := TSpDelphiIDE.ExpandMacros(TSpDelphiIDE.GetSearchPath(FIDEVersion, APlatform, False), FIDEVersion);
+        L.Text := TSpDelphiIDE.ExpandMacros(TSpDelphiIDE.GetSearchPath(FIDEVersion, APlatform, False), FIDEVersion, APlatform);
         L.Text := StringReplace(L.Text, ';', sLineBreak, [rfReplaceAll, rfIgnoreCase]);
         for I := 0 to L.Count - 1 do
           L[I] := '"' + L[I] + '"';
@@ -1289,8 +1290,8 @@ begin
         if S[Length(S)] = ';' then
           Delete(S, Length(S), 1);
 
-        // Save the DCC32.CFG file on the Package directory
-        DCCConfig := TPath.Combine(WorkDir, 'DCC32.CFG');
+        // Save the DCC32/64.CFG file on the Package directory
+        DCCConfig := TPath.Combine(WorkDir, APlatform.DccConfig);
         R := IDETypes[FIDEVersion].IDERegistryPath;
         L.Clear;
         // SearchPath
