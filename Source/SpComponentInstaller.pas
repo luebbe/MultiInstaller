@@ -79,8 +79,8 @@ resourcestring
   SLogExecuting = 'Executing:' + sLineBreak + '     %s';
   SLogExtracting = 'Extracting:' + sLineBreak + '     %s' + sLineBreak + 'To:' + sLineBreak + '     %s';
   SLogGitCloning = 'Git cloning:' + sLineBreak + '     %s' + sLineBreak + 'To:' + sLineBreak + '     %s';
-  SLogCompiling = 'Compiling for %s Package: %s';
-  SLogInstalling = 'Installing for %s Package: %s';
+  SLogCompiling = 'Compiling for %s' + sLineBreak + 'Package: %s';
+  SLogInstalling = 'Installing for %s' + sLineBreak + 'Package: %s';
   SLogFinished = 'All the component packages have been successfully installed.' + sLineBreak + 'Elapsed time: %f secs.';
 
   SGitCloneCommand = 'GIT.EXE clone --verbose --progress "%s" "%s"';
@@ -141,12 +141,16 @@ type
   TSpPlatformHelper = record helper for TSpPlatform
   private
     function GetDccPath: string;
+    function GetKnownPackages: string;
     function GetName: string;
+    function GetOutputDir: string;
     function GetRegKey: string;
   public
-    property DccPath: string read GetDccPath;
-    property Name   : string read GetName;
-    property RegKey : string read GetRegKey;
+    property DccPath      : string read GetDccPath;
+    property KnownPackages: string read GetKnownPackages;
+    property Name         : string read GetName;
+    property OutputDir    : string read GetOutputDir;
+    property RegKey       : string read GetRegKey;
   end;
 
   TSpDelphiIDE = class
@@ -173,8 +177,8 @@ type
     class function ExpandMacros(S: string; IDE: TSpIDEType): string;
 
     // SearchPath
-    class function GetSearchPath(IDE: TSpIDEType; CPPBuilderPath: Boolean): string;
-    class procedure AddToSearchPath(SourcesL: TStrings; IDE: TSpIDEType);
+    class function GetSearchPath(IDE: TSpIDEType; APlatform: TSpPlatform; CPPBuilderPath: Boolean): string;
+    class procedure AddToSearchPath(SourcesL: TStrings; IDE: TSpIDEType; APlatform: TSpPlatform);
   end;
 
   TSpActionType = (satNone, satCopy, satCopyRun, satRun);
@@ -347,32 +351,27 @@ type
 
 function TSpPlatformHelper.GetDccPath: string;
 begin
-  if Self = pltWin32 then
-    Result := 'dcc32.exe'
-  else if Self = pltWin64 then
-    Result := 'dcc64.exe'
-  else
-    Result := '';
+  Result := IfThen(Self = pltWin32, 'dcc32.exe', 'dcc64.exe');
+end;
+
+function TSpPlatformHelper.GetKnownPackages: string;
+begin
+  Result := '\Known Packages' + IfThen(Self = pltWin32, '', ' x64');
 end;
 
 function TSpPlatformHelper.GetName: string;
 begin
-  if Self = pltWin32 then
-    Result := 'Win32'
-  else if Self = pltWin64 then
-    Result := 'Win64'
-  else
-    Result := '';
+  Result := IfThen(Self = pltWin32, 'Win32', 'Win64');
+end;
+
+function TSpPlatformHelper.GetOutputDir: string;
+begin
+  Result := IfThen(Self = pltWin32, '', 'Win64');
 end;
 
 function TSpPlatformHelper.GetRegKey: string;
 begin
-  if Self = pltWin32 then
-    Result := '\Win32'
-  else if Self = pltWin64 then
-    Result := '\Win64'
-  else
-    Result := '';
+  Result := '\' + GetName;
 end;
 
 procedure SpOpenLink(URL: string);
@@ -857,14 +856,14 @@ end;
 class function TSpDelphiIDE.GetBPLOutputDir(IDE: TSpIDEType; APlatform: TSpPlatform): string;
 begin
   // BPL Output Dir
-  SpReadRegValue(IDETypes[IDE].IDERegistryPath + '\Library' + APlatform.RegKey, 'Package DPL Output', Result);
+  SpReadRegValue(IDETypes[IDE].IDERegistryPath + '\Library' + APlatform.OutputDir, 'Package DPL Output', Result);
   Result := TSpDelphiIDE.ExpandMacros(Result, IDE);
 end;
 
 class function TSpDelphiIDE.GetDCPOutputDir(IDE: TSpIDEType; APlatform: TSpPlatform): string;
 begin
   // DCP Output Dir
-  SpReadRegValue(IDETypes[IDE].IDERegistryPath + '\Library' + APlatform.RegKey, 'Package DCP Output', Result);
+  SpReadRegValue(IDETypes[IDE].IDERegistryPath + '\Library' + APlatform.OutputDir, 'Package DCP Output', Result);
   Result := TSpDelphiIDE.ExpandMacros(Result, IDE);
 end;
 
@@ -1082,20 +1081,19 @@ begin
   end;
 end;
 
-class function TSpDelphiIDE.GetSearchPath(IDE: TSpIDEType;
-  CPPBuilderPath: Boolean): string;
+class function TSpDelphiIDE.GetSearchPath(IDE: TSpIDEType; APlatform: TSpPlatform; CPPBuilderPath: Boolean): string;
 var
   Key, Name: string;
 begin
   Result := '';
   if IDE <> ideNone then
     begin
-      SpIDESearchPathRegKey(IDE, Key, Name, CPPBuilderPath, pltWin32); //##LO Add Win64 Support later
+      SpIDESearchPathRegKey(IDE, Key, Name, CPPBuilderPath, APlatform);
       SpReadRegValue(Key, Name, Result);
     end;
 end;
 
-class procedure TSpDelphiIDE.AddToSearchPath(SourcesL: TStrings; IDE: TSpIDEType);
+class procedure TSpDelphiIDE.AddToSearchPath(SourcesL: TStrings; IDE: TSpIDEType; APlatform: TSpPlatform);
 var
   I           : Integer;
   S, Key, Name: string;
@@ -1105,26 +1103,26 @@ begin
       SourcesL[I] := ExpandMacros(ExcludeTrailingPathDelimiter(SourcesL[I]), IDE);
 
       // Add the directory to the Delphi Win32 search path registry entry
-      S := GetSearchPath(IDE, False);
+      S := GetSearchPath(IDE, APlatform, False);
       if (S <> '') and (SourcesL[I] <> '') then
         if not SpStringSearch(S, SourcesL[I]) then
           begin
             if S[Length(S)] <> ';' then
               S := S + ';';
             S := S + SourcesL[I];
-            SpIDESearchPathRegKey(IDE, Key, Name, False, pltWin32); //##LO Add Win64 Support later
+            SpIDESearchPathRegKey(IDE, Key, Name, False, APlatform);
             SpWriteRegValue(Key, Name, S);
           end;
 
       // Add the directory to the C++Builder search path registry entry
-      S := GetSearchPath(IDE, True);
+      S := GetSearchPath(IDE, APlatform, True);
       if (S <> '') and (SourcesL[I] <> '') then
         if not SpStringSearch(S, SourcesL[I]) then
           begin
             if S[Length(S)] <> ';' then
               S := S + ';';
             S := S + SourcesL[I];
-            SpIDESearchPathRegKey(IDE, Key, Name, True, pltWin32); //##LO Add Win64 Support later
+            SpIDESearchPathRegKey(IDE, Key, Name, True, APlatform);
             SpWriteRegValue(Key, Name, S);
           end;
     end;
@@ -1278,12 +1276,12 @@ begin
       L := TStringList.Create;
       try
         // Add the SourcesL directories to the registry
-        TSpDelphiIDE.AddToSearchPath(SourcesL, FIDEVersion);
+        TSpDelphiIDE.AddToSearchPath(SourcesL, FIDEVersion, APlatform);
 
         // Expand SearchPath, replace $(Delphi) and $(BDS) with real directories
         // and enclose the paths with " " to transform it to a valid
         // comma delimited string for the -U switch.
-        L.Text := TSpDelphiIDE.ExpandMacros(TSpDelphiIDE.GetSearchPath(FIDEVersion, False), FIDEVersion);
+        L.Text := TSpDelphiIDE.ExpandMacros(TSpDelphiIDE.GetSearchPath(FIDEVersion, APlatform, False), FIDEVersion);
         L.Text := StringReplace(L.Text, ';', sLineBreak, [rfReplaceAll, rfIgnoreCase]);
         for I := 0 to L.Count - 1 do
           L[I] := '"' + L[I] + '"';
@@ -1381,8 +1379,7 @@ begin
   // BPL filename
   BPL := TPath.Combine(TSpDelphiIDE.GetBPLOutputDir(FIDEVersion, APlatform), FBPLFilename);
 
-  //##LO double check this for Win64
-  RegKey := IDETypes[FIDEVersion].IDERegistryPath + '\Known Packages';
+  RegKey := IDETypes[FIDEVersion].IDERegistryPath + APlatform.KnownPackages;
 
   if FOnlyRuntime then
     begin
@@ -1646,9 +1643,10 @@ function TSpComponentPackageList.CompileAll(BaseFolder: string; IDE: TSpIDEType;
 var
   TempDir                      : string;
   J                            : Integer;
-  Item                         : TSpComponentPackage;
+  LComponent                   : TSpComponentPackage;
   SourcesL, CompileL, IncludesL: TStringList;
-  DPKList                      : TSpDelphiDPKFilesList;
+  LPackageList                 : TSpDelphiDPKFilesList;
+  LPackage                     : TSpDelphiDPKFile;
 begin
   Result := False;
   if IDE = ideNone then
@@ -1668,66 +1666,70 @@ begin
 
   SourcesL := TStringList.Create;
   try
-    for Item in Self do
+    for LComponent in Self do
       begin
-        SpWriteLog(Log, SLogStartCompile, [Item.Name]);
+        SpWriteLog(Log, SLogStartCompile, [LComponent.Name]);
 
         // Expand Search Path
-        if Item.SearchPath <> '' then
+        if LComponent.SearchPath <> '' then
           begin
-            SourcesL.CommaText := Item.SearchPath;
+            SourcesL.CommaText := LComponent.SearchPath;
             // Add the destination search path
             for J := 0 to SourcesL.Count - 1 do
-              SourcesL[J] := TPath.GetFullPath(TPath.Combine(Item.Destination, SourcesL[J]));
+              SourcesL[J] := TPath.GetFullPath(TPath.Combine(LComponent.Destination, SourcesL[J]));
           end
         else
-          SourcesL.Add(Item.Destination);
-        Item.SearchPath := SourcesL.CommaText;
+          SourcesL.Add(LComponent.Destination);
+        LComponent.SearchPath := SourcesL.CommaText;
 
-        case Item.Installable of
+        case LComponent.Installable of
           sitNotInstallable:
             ; // do nothing
           sitSearchPathOnly:
-            // If the package is not installable add the SearchPath to the registry
-            // This is useful when installing utility libraries that doesn't have
-            // components to install, for example GraphicEx, GDI+, DirectX, etc
-            TSpDelphiIDE.AddToSearchPath(SourcesL, IDE);
+            begin
+              // If the package is not installable add the SearchPath to the registry
+              // This is useful when installing utility libraries that doesn't have
+              // components to install, for example GraphicEx, GDI+, DirectX, etc
+              TSpDelphiIDE.AddToSearchPath(SourcesL, IDE, pltWin32);
+              TSpDelphiIDE.AddToSearchPath(SourcesL, IDE, pltWin64);
+            end;
           sitInstallable:
             begin
               IncludesL := TStringList.Create;
-              DPKList := TSpDelphiDPKFilesList.Create;
+              LPackageList := TSpDelphiDPKFilesList.Create;
               try
                 // Expand Packages
                 CompileL := TStringList.Create;
                 try
-                  CompileL.CommaText := Item.PackageList[IDE];
+                  CompileL.CommaText := LComponent.PackageList[IDE];
                   for J := 0 to CompileL.Count - 1 do
-                    DPKList.Add(TSpDelphiDPKFile.Create(TPath.Combine(Item.Destination, CompileL[J]), IDE));
+                    LPackageList.Add(TSpDelphiDPKFile.Create(TPath.Combine(LComponent.Destination, CompileL[J]), IDE));
                 finally
                   CompileL.Free;
                 end;
                 // Runtime packages must be compiled first
-                DPKList.Sort;
+                LPackageList.Sort;
+
                 // Expand Includes
-                IncludesL.CommaText := StringReplace(Item.Includes, rvBaseFolder, ExcludeTrailingPathDelimiter(BaseFolder), [rfReplaceAll, rfIgnoreCase]);
+                IncludesL.CommaText := StringReplace(LComponent.Includes, rvBaseFolder, ExcludeTrailingPathDelimiter(BaseFolder), [rfReplaceAll, rfIgnoreCase]);
 
                 // Compile and Install
-                for J := 0 to DPKList.Count - 1 do
+                for LPackage in LPackageList do
                   begin
                     // Run- & design time packages for Win32
-                    if not DPKList[J].CompilePackage(pltWin32, SourcesL, IncludesL, Log, TempDir) then
+                    if not LPackage.CompilePackage(pltWin32, SourcesL, IncludesL, Log, TempDir) then
                       Exit;
 
                     // Compile Run time packages for Win64
                     // Starting from Delphi 13 compile also design packages
-//##LO                    if DPKList[J].OnlyRuntime or (IDE >= ideDelphiFlorence) then
-//                      if not DPKList[J].CompilePackage(pltWin64, SourcesL, IncludesL, Log, TempDir) then
-//                        Exit;
+                    if LPackage.OnlyRuntime or (IDE >= ideDelphiFlorence) then
+                      if not LPackage.CompilePackage(pltWin64, SourcesL, IncludesL, Log, TempDir) then
+                        Exit;
                   end;
 
               finally
                 IncludesL.Free;
-                DPKList.Free;
+                LPackageList.Free;
               end;
             end;
         end;
