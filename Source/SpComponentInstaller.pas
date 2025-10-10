@@ -79,8 +79,8 @@ resourcestring
   SLogExecuting = 'Executing:' + sLineBreak + '     %s';
   SLogExtracting = 'Extracting:' + sLineBreak + '     %s' + sLineBreak + 'To:' + sLineBreak + '     %s';
   SLogGitCloning = 'Git cloning:' + sLineBreak + '     %s' + sLineBreak + 'To:' + sLineBreak + '     %s';
-  SLogCompiling = 'Compiling Package: %s';
-  SLogInstalling = 'Installing Package: %s';
+  SLogCompiling = 'Compiling for %s Package: %s';
+  SLogInstalling = 'Installing for %s Package: %s';
   SLogFinished = 'All the component packages have been successfully installed.' + sLineBreak + 'Elapsed time: %f secs.';
 
   SGitCloneCommand = 'GIT.EXE clone --verbose --progress "%s" "%s"';
@@ -138,6 +138,17 @@ type
   TSpIDEPersonality = (persDelphiWin32, persDelphiNET, persCPPBuilder);
   TSpPlatform = (pltWin32, pltWin64);
 
+  TSpPlatformHelper = record helper for TSpPlatform
+  private
+    function GetDccPath: string;
+    function GetName: string;
+    function GetRegKey: string;
+  public
+    property DccPath: string read GetDccPath;
+    property Name   : string read GetName;
+    property RegKey : string read GetRegKey;
+  end;
+
   TSpDelphiIDE = class
   private
     class var FCachedMacrosCommaDelimited: string;
@@ -153,9 +164,9 @@ type
 
     // Path
     class function GetIDEDir(IDE: TSpIDEType): string;
-    class function GetDCC32Filename(IDE: TSpIDEType): string;
-    class function GetBPLOutputDir(IDE: TSpIDEType): string;
-    class function GetDCPOutputDir(IDE: TSpIDEType): string;
+    class function GetDCCFilename(IDE: TSpIDEType; APlatform: TSpPlatform): string;
+    class function GetBPLOutputDir(IDE: TSpIDEType; APlatform: TSpPlatform): string;
+    class function GetDCPOutputDir(IDE: TSpIDEType; APlatform: TSpPlatform): string;
 
     // Macros
     class function ReadEnvironmentProj(IDE: TSpIDEType; NamesAndValues: TStringList): Boolean;
@@ -231,7 +242,7 @@ type
 { Misc }
 procedure SpOpenLink(URL: string);
 function SpStringSearch(S, SubStr: string; Delimiter: Char = ';'): Boolean;
-procedure SpWriteLog(Log: TStrings; ResourceS, Arg1: string; Arg2: string = '');
+procedure SpWriteLog(Log: TStrings; const AMessage: string; const AParams: array of TVarRec);
 
 { Files }
 function SpGetParameter(const ParamName: string; out ParamValue: string): Boolean;
@@ -308,7 +319,7 @@ type
     FLibSuffix     : string;
     FIDEVersion    : TSpIDEType;
     procedure CreateAndCopyEmptyResIfNeeded;
-    function RegisterPackage(Log: TStrings): Boolean;
+    function RegisterPackage(APlatform: TSpPlatform; Log: TStrings): Boolean;
   public
     property DPKFilename   : string read FDPKFilename;
     property BPLFilename   : string read FBPLFilename;
@@ -319,16 +330,50 @@ type
     property LibSuffix     : string read FLibSuffix;
     property IDEVersion    : TSpIDEType read FIDEVersion;
     constructor Create(const Filename: string; IDE: TSpIDEType); virtual;
-    function CompilePackage(DCC: string; SourcesL, IncludesL, Log: TStrings; TempDir: string = ''): Boolean;
+    function CompilePackage(APlatform: TSpPlatform; SourcesL, IncludesL, Log: TStrings; TempDir: string = ''): Boolean;
   end;
 
   TSpDelphiDPKFilesList = class(TObjectList<TSpDelphiDPKFile>)
+  private
+    procedure BubbleSort(const AComparer: IComparer<TSpDelphiDPKFile>);
   public
     procedure Sort; reintroduce;
   end;
 
 //WMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWM
 { Helpers }
+
+{ TSpPlatformHelper }
+
+function TSpPlatformHelper.GetDccPath: string;
+begin
+  if Self = pltWin32 then
+    Result := 'dcc32.exe'
+  else if Self = pltWin64 then
+    Result := 'dcc64.exe'
+  else
+    Result := '';
+end;
+
+function TSpPlatformHelper.GetName: string;
+begin
+  if Self = pltWin32 then
+    Result := 'Win32'
+  else if Self = pltWin64 then
+    Result := 'Win64'
+  else
+    Result := '';
+end;
+
+function TSpPlatformHelper.GetRegKey: string;
+begin
+  if Self = pltWin32 then
+    Result := '\Win32'
+  else if Self = pltWin64 then
+    Result := '\Win64'
+  else
+    Result := '';
+end;
 
 procedure SpOpenLink(URL: string);
 begin
@@ -350,11 +395,11 @@ begin
   end;
 end;
 
-procedure SpWriteLog(Log: TStrings; ResourceS, Arg1: string; Arg2: string = '');
+procedure SpWriteLog(Log: TStrings; const AMessage: string; const AParams: array of TVarRec);
 begin
   if Assigned(Log) then
     begin
-      Log.Add(Format(ResourceS, [Arg1, Arg2]));
+      Log.Add(Format(AMessage, AParams));
       Log.Add('');
     end;
 end;
@@ -705,16 +750,6 @@ end;
 //WMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWM
 { IDE }
 
-function SpGetPlatform(APlatform: TSpPlatform): string;
-begin
-  if APlatform = pltWin32 then
-    Result := '\Win32'
-  else if APlatform = pltWin64 then
-    Result := '\Win64'
-  else
-    Result := '';
-end;
-
 function SpActionTypeToString(A: TSpActionType): string;
 begin
   Result := ActionTypes[A];
@@ -753,7 +788,7 @@ begin
       Name := 'Search Path';
       Key := Key + '\Library';
     end;
-  Key := Key + SpGetPlatform(APlatform);
+  Key := Key + APlatform.RegKey;
 end;
 
 //WMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWM
@@ -764,7 +799,7 @@ begin
   if IDE = ideNone then
     Result := False
   else
-    Result := TFile.Exists(GetDCC32Filename(IDE));
+    Result := TFile.Exists(GetDCCFilename(IDE, pltWin32)); // Just check for the dcc32 executable
 end;
 
 class function TSpDelphiIDE.PersonalityInstalled(IDE: TSpIDEType;
@@ -812,24 +847,24 @@ begin
   SpReadRegValue(IDETypes[IDE].IDERegistryPath, 'RootDir', Result);
 end;
 
-class function TSpDelphiIDE.GetDCC32Filename(IDE: TSpIDEType): string;
+class function TSpDelphiIDE.GetDCCFilename(IDE: TSpIDEType; APlatform: TSpPlatform): string;
 begin
   SpReadRegValue(IDETypes[IDE].IDERegistryPath, 'App', Result);
   if Result <> '' then
-    Result := TPath.Combine(TPath.GetDirectoryName(Result), 'dcc32.exe');
+    Result := TPath.Combine(TPath.GetDirectoryName(Result), APlatform.DccPath);
 end;
 
-class function TSpDelphiIDE.GetBPLOutputDir(IDE: TSpIDEType): string;
+class function TSpDelphiIDE.GetBPLOutputDir(IDE: TSpIDEType; APlatform: TSpPlatform): string;
 begin
   // BPL Output Dir
-  SpReadRegValue(IDETypes[IDE].IDERegistryPath + '\Library\Win32', 'Package DPL Output', Result);
+  SpReadRegValue(IDETypes[IDE].IDERegistryPath + '\Library' + APlatform.RegKey, 'Package DPL Output', Result);
   Result := TSpDelphiIDE.ExpandMacros(Result, IDE);
 end;
 
-class function TSpDelphiIDE.GetDCPOutputDir(IDE: TSpIDEType): string;
+class function TSpDelphiIDE.GetDCPOutputDir(IDE: TSpIDEType; APlatform: TSpPlatform): string;
 begin
   // DCP Output Dir
-  SpReadRegValue(IDETypes[IDE].IDERegistryPath + '\Library\Win32', 'Package DCP Output', Result);
+  SpReadRegValue(IDETypes[IDE].IDERegistryPath + '\Library' + APlatform.RegKey, 'Package DCP Output', Result);
   Result := TSpDelphiIDE.ExpandMacros(Result, IDE);
 end;
 
@@ -1135,11 +1170,11 @@ begin
               FDescription := Copy(L.Text, P, P2 - P);
           end;
 
-      // Try to parse $LIBSUFFIX
-      // Won't work if there are nested $IFDEFs, for example:
-      //   {$IFDEF VER340} {$LIBSUFFIX '270'} {$ENDIF}
-      //   {$IFDEF VER350} {$LIBSUFFIX '280'} {$ENDIF}
-      // Delphi 10.4 Sydney added the AUTO option: {$LIBSUFFIX AUTO}
+        // Try to parse $LIBSUFFIX
+        // Won't work if there are nested $IFDEFs, for example:
+        //   {$IFDEF VER340} {$LIBSUFFIX '270'} {$ENDIF}
+        //   {$IFDEF VER350} {$LIBSUFFIX '280'} {$ENDIF}
+        // Delphi 10.4 Sydney added the AUTO option: {$LIBSUFFIX AUTO}
         P := Pos('{$LIBSUFFIX AUTO}', L.Text);
         if P > 0 then
           begin
@@ -1189,8 +1224,11 @@ begin
     end;
 end;
 
-function TSpDelphiDPKFile.CompilePackage(DCC: string; SourcesL,
-  IncludesL, Log: TStrings; TempDir: string): Boolean;
+function TSpDelphiDPKFile.CompilePackage(
+  APlatform: TSpPlatform;
+  SourcesL, IncludesL,
+  Log: TStrings;
+  TempDir: string): Boolean;
 // DCC = full path of dcc32.exe, e.g. 'C:\Program Files\Borland\Delphi7\Bin\dcc32.exe
 // IDE = IDE version to compile with
 // SourcesL = list of source folders of the component package to add to the Library Search Path
@@ -1198,6 +1236,7 @@ function TSpDelphiDPKFile.CompilePackage(DCC: string; SourcesL,
 // Log = Log strings
 // TempDir = Temp dir where the package dcu will be copied, e.g. 'C:\Windows\Temp\MyCompos'
 var
+  DCC                                       : string;
   CommandLine, WorkDir, DOSOutput, DCCConfig: string;
   L                                         : TStringList;
   I                                         : Integer;
@@ -1211,11 +1250,13 @@ begin
   if not Exists then
     begin
       if Assigned(Log) then
-        SpWriteLog(Log, SLogInvalidPath, FDPKFilename);
+        SpWriteLog(Log, SLogInvalidPath, [FDPKFilename]);
       Exit;
     end
   else
     begin
+      DCC := TSpDelphiIDE.GetDCCFilename(FIDEVersion, APlatform);
+
       // [IDE Bug]: dcc32.exe won't execute if -Q option is not used
       // But it works fine without -Q if ShellExecute is used:
       // ShellExecute(Application.Handle, 'open', DCC, ExtractFileName(FDPKFilename), ExtractFilePath(FDPKFilename), SW_SHOWNORMAL);
@@ -1267,10 +1308,10 @@ begin
             L.Add('-R' + S);
           end;
         // BPL Output
-        S := TSpDelphiIDE.GetBPLOutputDir(FIDEVersion);
+        S := TSpDelphiIDE.GetBPLOutputDir(FIDEVersion, APlatform);
         L.Add('-LE"' + S + '"');
         // DCP Output
-        S := TSpDelphiIDE.GetDCPOutputDir(FIDEVersion);
+        S := TSpDelphiIDE.GetDCPOutputDir(FIDEVersion, APlatform);
         L.Add('-LN"' + S + '"');
         // BPI Output for the compiled packages, required for C++Builder 2006 and above,
         // same as DCP Output
@@ -1307,14 +1348,14 @@ begin
       CreateAndCopyEmptyResIfNeeded;
 
       // Compile
-      SpWriteLog(Log, SLogCompiling, FDPKFilename);
+      SpWriteLog(Log, SLogCompiling, [APlatform.Name, FDPKFilename]);
       try
         Result := SpExecuteDosCommand(CommandLine, WorkDir, DOSOutput) = 0;
         if Assigned(Log) then
           Log.Text := Log.Text + DOSOutput + sLineBreak;
         if Result then
           begin
-            Result := RegisterPackage(Log);
+            Result := RegisterPackage(APlatform, Log);
             if not Result then
               LError := SLogErrorRegistering;
           end
@@ -1326,10 +1367,10 @@ begin
     end;
 
   if not Result and Assigned(Log) then
-    SpWriteLog(Log, LError, FDPKFilename, '');
+    SpWriteLog(Log, LError, [FDPKFilename]);
 end;
 
-function TSpDelphiDPKFile.RegisterPackage(Log: TStrings): Boolean;
+function TSpDelphiDPKFile.RegisterPackage(APlatform: TSpPlatform; Log: TStrings): Boolean;
 var
   BPL, RegKey: string;
 begin
@@ -1338,8 +1379,9 @@ begin
     Exit;
 
   // BPL filename
-  BPL := TPath.Combine(TSpDelphiIDE.GetBPLOutputDir(FIDEVersion), FBPLFilename);
+  BPL := TPath.Combine(TSpDelphiIDE.GetBPLOutputDir(FIDEVersion, APlatform), FBPLFilename);
 
+  //##LO double check this for Win64
   RegKey := IDETypes[FIDEVersion].IDERegistryPath + '\Known Packages';
 
   if FOnlyRuntime then
@@ -1352,7 +1394,7 @@ begin
     begin
       if SpWriteRegValue(RegKey, BPL, FDescription) then
         begin
-          SpWriteLog(Log, SLogInstalling, FDPKFilename);
+          SpWriteLog(Log, SLogInstalling, [APlatform.Name, FDPKFilename]);
           Result := True;
         end;
     end;
@@ -1361,12 +1403,33 @@ end;
 //WMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWM
 { TSpDelphiDPKFilesList }
 
+procedure TSpDelphiDPKFilesList.BubbleSort(const AComparer: IComparer<TSpDelphiDPKFile>);
+var
+  I, J       : Integer;
+  LWasSwapped: Boolean;
+begin
+  for I := Pred(Count) downto 1 do
+    begin
+      LWasSwapped := False;
+      for J := 1 to I do
+        if (AComparer.Compare(Items[J - 1], Items[J]) > 0) then
+          begin
+            Exchange(J - 1, J);
+            LWasSwapped := True;
+          end;
+      if not LWasSwapped then
+        Break;
+    end;
+end;
+
 procedure TSpDelphiDPKFilesList.Sort;
 begin
-  inherited Sort(TComparer<TSpDelphiDPKFile>.Construct(
+  // Use BubbleSort, because the default Quicksort is unstable and may
+  // swap the order of "identical" items
+  BubbleSort(TComparer<TSpDelphiDPKFile>.Construct(
     function(const Left, Right: TSpDelphiDPKFile): Integer
     begin
-        // Runtime packages should be sorted first
+      // Runtime packages should be sorted first
       if not Left.FOnlyDesigntime and Right.FOnlyDesigntime then
         Result := -1
       else
@@ -1486,12 +1549,12 @@ var
 begin
   GitChecked := False;
   Result := False;
-  SpWriteLog(Log, SLogStartUnzip, '');
+  SpWriteLog(Log, SLogStartUnzip, []);
 
   // Check if the files exist
   if not TDirectory.Exists(Destination) then
     begin
-      SpWriteLog(Log, SLogInvalidPath, Destination);
+      SpWriteLog(Log, SLogInvalidPath, [Destination]);
       Exit;
     end;
   for I := 0 to Count - 1 do
@@ -1507,7 +1570,7 @@ begin
         begin
           if not AnsiSameText(TPath.GetExtension(Item.ZipFile), '.ZIP') then
             begin
-              SpWriteLog(Log, SLogNotAZip, Item.ZipFile);
+              SpWriteLog(Log, SLogNotAZip, [Item.ZipFile]);
               Exit;
             end;
         end
@@ -1516,7 +1579,7 @@ begin
         begin
           if not AnsiSameText(TPath.GetExtension(Item.Git), '.GIT') then
             begin
-              SpWriteLog(Log, SLogNotAGit, Item.Git);
+              SpWriteLog(Log, SLogNotAGit, [Item.Git]);
               Exit;
             end;
         end;
@@ -1529,10 +1592,10 @@ begin
 
       if Item.ZipFile <> '' then
         begin
-          SpWriteLog(Log, SLogExtracting, Item.ZipFile, Item.Destination);
+          SpWriteLog(Log, SLogExtracting, [Item.ZipFile, Item.Destination]);
           if not SpExtractZip(Item.ZipFile, Item.Destination) then
             begin
-              SpWriteLog(Log, SLogCorruptedZip, Item.ZipFile);
+              SpWriteLog(Log, SLogCorruptedZip, [Item.ZipFile]);
               Exit;
             end;
         end
@@ -1544,19 +1607,19 @@ begin
               GitChecked := True;
               if not SpIsGitInstalled(Log) then
                 begin
-                  SpWriteLog(Log, SLogGitCloneFailed, '');
+                  SpWriteLog(Log, SLogGitCloneFailed, [Item.Git]);
                   Exit;
                 end;
             end;
-          SpWriteLog(Log, SLogGitCloning, Item.Git, Item.Destination);
+          SpWriteLog(Log, SLogGitCloning, [Item.Git, Item.Destination]);
           if not SpGitClone(Item.Git, Item.Destination, Log) then
             begin
-              SpWriteLog(Log, SLogGitCloneFailed, Item.Git);
+              SpWriteLog(Log, SLogGitCloneFailed, [Item.Git]);
               Exit;
             end;
         end
       else
-        SpWriteLog(Log, SLogNotInstallable, Item.Name); // Not a Zip nor a Git, keep going
+        SpWriteLog(Log, SLogNotInstallable, [Item.Name]); // Not a Zip nor a Git, keep going
     end;
   Result := True;
 end;
@@ -1568,7 +1631,7 @@ begin
   Result := True;
   if Count > 0 then
     begin
-      SpWriteLog(Log, SLogStartExecute, '');
+      SpWriteLog(Log, SLogStartExecute, []);
       for I := 0 to Count - 1 do
         begin
           Result := Items[I].ExecuteList.ExecuteAll(BaseFolder, Log);
@@ -1581,8 +1644,8 @@ end;
 
 function TSpComponentPackageList.CompileAll(BaseFolder: string; IDE: TSpIDEType; Log: TStrings): Boolean;
 var
-  DCC, TempDir                 : string;
-  I, J                         : Integer;
+  TempDir                      : string;
+  J                            : Integer;
   Item                         : TSpComponentPackage;
   SourcesL, CompileL, IncludesL: TStringList;
   DPKList                      : TSpDelphiDPKFilesList;
@@ -1595,7 +1658,7 @@ begin
     end
   else if not TSpDelphiIDE.Installed(IDE) then
     begin
-      SpWriteLog(Log, SLogInvalidIDE, IDETypes[IDE].IDEName);
+      SpWriteLog(Log, SLogInvalidIDE, [IDETypes[IDE].IDEName]);
       Exit;
     end;
 
@@ -1603,13 +1666,11 @@ begin
   TempDir := TPath.Combine(TPath.GetTempPath, 'SpMultiInstall');
   CreateDir(TempDir);
 
-  DCC := TSpDelphiIDE.GetDCC32Filename(IDE);
   SourcesL := TStringList.Create;
   try
-    for I := 0 to Count - 1 do
+    for Item in Self do
       begin
-        Item := Items[I];
-        SpWriteLog(Log, SLogStartCompile, Item.Name);
+        SpWriteLog(Log, SLogStartCompile, [Item.Name]);
 
         // Expand Search Path
         if Item.SearchPath <> '' then
@@ -1649,10 +1710,21 @@ begin
                 DPKList.Sort;
                 // Expand Includes
                 IncludesL.CommaText := StringReplace(Item.Includes, rvBaseFolder, ExcludeTrailingPathDelimiter(BaseFolder), [rfReplaceAll, rfIgnoreCase]);
+
                 // Compile and Install
                 for J := 0 to DPKList.Count - 1 do
-                  if not DPKList[J].CompilePackage(DCC, SourcesL, IncludesL, Log, TempDir) then
-                    Exit;
+                  begin
+                    // Run- & design time packages for Win32
+                    if not DPKList[J].CompilePackage(pltWin32, SourcesL, IncludesL, Log, TempDir) then
+                      Exit;
+
+                    // Compile Run time packages for Win64
+                    // Starting from Delphi 13 compile also design packages
+//##LO                    if DPKList[J].OnlyRuntime or (IDE >= ideDelphiFlorence) then
+//                      if not DPKList[J].CompilePackage(pltWin64, SourcesL, IncludesL, Log, TempDir) then
+//                        Exit;
+                  end;
+
               finally
                 IncludesL.Free;
                 DPKList.Free;
@@ -1663,6 +1735,7 @@ begin
         Application.ProcessMessages;
       end;
     Result := True;
+
   finally
     SourcesL.Free;
     SpFileOperation(TempDir, '', FO_DELETE);
@@ -1718,14 +1791,14 @@ var
     if S <> '' then
       begin
         S := TPath.Combine(Item.Destination, S);
-        SpWriteLog(Log, SLogExecuting, S);
+        SpWriteLog(Log, SLogExecuting, [S]);
         if SpExecuteDosCommand(S, Item.Destination, DosOutput) = 0 then
           begin
             Log.Text := Log.Text + DosOutput + sLineBreak;
             Result := True;
           end
         else
-          SpWriteLog(Log, SLogErrorExecuting, S, '');
+          SpWriteLog(Log, SLogErrorExecuting, [S]);
       end;
   end;
 
@@ -1740,7 +1813,7 @@ begin
       Item.Destination := StringReplace(Item.Destination, rvBaseFolder, BaseFolder, [rfReplaceAll, rfIgnoreCase]);
       if not TFile.Exists(Item.Origin) then
         begin
-          SpWriteLog(Log, SLogInvalidPath, Item.Origin);
+          SpWriteLog(Log, SLogInvalidPath, [Item.Origin]);
           Exit;
         end;
     end;
@@ -1756,14 +1829,14 @@ begin
         satCopy, satCopyRun:
           if SpFileOperation(Item.Origin, Item.Destination, FO_COPY) then
             begin
-              SpWriteLog(Log, SLogCopying, Item.Origin, Item.Destination);
+              SpWriteLog(Log, SLogCopying, [Item.Origin, Item.Destination]);
               if Item.Action = satCopyRun then
                 if not ExecuteRun then
                   Exit;
             end
           else
             begin
-              SpWriteLog(Log, SLogErrorCopying, Item.Origin, Item.Destination);
+              SpWriteLog(Log, SLogErrorCopying, [Item.Origin, Item.Destination]);
               Exit;
             end;
       end;
@@ -1801,7 +1874,7 @@ begin
         if ComponentPackages.CompileAll(BaseFolder, IDE, Log) then
           begin
             Secs := (GetTickCount - N) / 1000;
-            SpWriteLog(Log, SLogEnd, '');
+            SpWriteLog(Log, SLogEnd, []);
             Log.Add(Format(SLogFinished, [Secs]));
 
             // [IDE-Change]
