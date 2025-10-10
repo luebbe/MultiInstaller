@@ -2,8 +2,6 @@ unit Form.Installer;
 
 interface
 
-{$WARN SYMBOL_PLATFORM OFF}
-{$WARN UNIT_PLATFORM OFF}
 {$BOOLEVAL OFF}       // Unit depends on short-circuit boolean evaluation
 
 {$IFDEF DEBUG}
@@ -87,7 +85,7 @@ type
     procedure chkSelectAllNoneClick(Sender: TObject);
   private
     FAppPath  : string;
-    FAutoStart: boolean;
+    FAutoStart: Boolean;
     FInstaller: TSpMultiInstaller;
 
     function ChangePage(Next: Boolean): Boolean;
@@ -150,13 +148,13 @@ begin
   SaveDialog1.InitialDir := FAppPath;
 
   // Allow to turn the autostart off via command line. Default:on
-  if FindCmdLineswitch('A', LAutoStart) then
-    FAutoStart := MatchText(LautoStart, ['Yes', 'True', '1'])
+  if FindCmdLineSwitch('A', LAutoStart) then
+    FAutoStart := MatchText(LAutoStart, ['Yes', 'True', '1'])
   else
-    FAutoStart := true;
+    FAutoStart := True;
 
   // Allow to pass the ini file via command line
-  if FindCmdLineswitch('I', LSetupIni) then
+  if FindCmdLineSwitch('I', LSetupIni) then
     CreateInstaller(LSetupIni)
   else
     CreateInstaller(FAppPath + rvSetupIni);
@@ -246,7 +244,7 @@ end;
 
 procedure TFormInstall.chkSelectAllNoneClick(Sender: TObject);
 var
-  I: integer;
+  I: Integer;
 begin
   for I := 0 to clbSelectComponents.Count - 1 do
     clbSelectComponents.Checked[I] := chkSelectAllNone.Checked;
@@ -267,9 +265,9 @@ begin
   for I := 0 to FInstaller.ComponentPackages.Count - 1 do
     if not FInstaller.ComponentPackages[I].Git.IsEmpty then
       begin
-        chkGetFromGit.Enabled := true;
-        chkGetFromGit.Checked := true;
-        break;
+        chkGetFromGit.Enabled := True;
+        chkGetFromGit.Checked := True;
+        Break;
       end;
 
   if DirectoryExists(FInstaller.ComponentPackages.DefaultInstallFolder) then
@@ -291,7 +289,8 @@ begin
         begin
           P := clbSelectComponents.Items.IndexOfObject(Pointer(G));
           if P > -1 then
-            clbSelectComponents.Items[P] := clbSelectComponents.Items[P] + #13#10 + FInstaller.ComponentPackages[I].Name;
+            clbSelectComponents.Items[P] := clbSelectComponents.Items[P] + sLineBreak +
+              FInstaller.ComponentPackages[I].Name;
         end;
 
       if P = -1 then
@@ -299,7 +298,7 @@ begin
           P := clbSelectComponents.Items.AddObject(FInstaller.ComponentPackages[I].Name, Pointer(G));
           clbSelectComponents.Checked[P] := True;
           if FInstaller.ComponentPackages[I].Git <> '' then
-            clbSelectComponents.Items[P] := clbSelectComponents.Items[P] + #13#10 +
+            clbSelectComponents.Items[P] := clbSelectComponents.Items[P] + sLineBreak +
               'GIT: ' + FInstaller.ComponentPackages[I].Git;
         end;
     end;
@@ -510,7 +509,7 @@ begin
 
   aFinish.Visible := True;
   aSaveLog.Visible := True;
-//  aBack.Visible := False;
+  aBack.Enabled := False;
   aNext.Visible := False;
   aCancel.Visible := False;
   Application.ProcessMessages;
@@ -520,6 +519,7 @@ begin
       Result := True;
   finally
     lblTitle.Caption := SFinishTitle;
+    aBack.Enabled := True;
     aFinish.Enabled := True;
     aSaveLog.Enabled := True;
     if not Result then
