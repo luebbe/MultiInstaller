@@ -94,6 +94,7 @@ type
 
     procedure CloseDelphi;
     procedure CreateInstaller(const APath: string);
+    procedure EnableNavigationActons(AEnable: Boolean);
     procedure FillCheckListBox;
     procedure FillRadioGroup;
     procedure WMDROPFILES(var Msg: TWMDropFiles); message WM_DROPFILES;
@@ -274,6 +275,15 @@ begin
     edtInstallFolder.Text := FInstaller.ComponentPackages.DefaultInstallFolder;
 end;
 
+procedure TFormInstall.EnableNavigationActons(AEnable: Boolean);
+begin
+  aFinish.Visible := not AEnable;
+  aSaveLog.Visible := not AEnable;
+  aBack.Enabled := AEnable;
+  aNext.Visible := AEnable;
+  aCancel.Visible := AEnable;
+end;
+
 procedure TFormInstall.FillCheckListBox;
 var
   I, G, P: Integer;
@@ -421,6 +431,7 @@ end;
 procedure TFormInstall.aBackExecute(Sender: TObject);
 begin
   ChangePage(False);
+  EnableNavigationActons(True);
 end;
 
 procedure TFormInstall.aNextExecute(Sender: TObject);
@@ -507,11 +518,7 @@ begin
           FInstaller.ComponentPackages[J].ZipFile := '';
     end;
 
-  aFinish.Visible := True;
-  aSaveLog.Visible := True;
-  aBack.Enabled := False;
-  aNext.Visible := False;
-  aCancel.Visible := False;
+  EnableNavigationActons(False);
   Application.ProcessMessages;
   try
     // Check, Unzip, Patch, Compile, Install
