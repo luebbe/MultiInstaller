@@ -65,6 +65,7 @@ type
     imgLogo: TImage;
     Timer1: TTimer;
     SaveDialog1: TSaveDialog;
+    chkSelectAllNone: TCheckBox;
     procedure aBrowseExecute(Sender: TObject);
     procedure aBackExecute(Sender: TObject);
     procedure aCancelExecute(Sender: TObject);
@@ -83,6 +84,7 @@ type
     procedure Timer1Timer(Sender: TObject);
     procedure pbxVersionInfoPaint(Sender: TObject);
     procedure pbxVersionInfoClick(Sender: TObject);
+    procedure chkSelectAllNoneClick(Sender: TObject);
   private
     FAppPath  : string;
     FAutoStart: boolean;
@@ -242,6 +244,14 @@ begin
   rgSelectIde.Enabled := chkCompileInIde.Checked;
 end;
 
+procedure TFormInstall.chkSelectAllNoneClick(Sender: TObject);
+var
+  I: integer;
+begin
+  for I := 0 to clbSelectComponents.Count - 1 do
+    clbSelectComponents.Checked[I] := chkSelectAllNone.Checked;
+end;
+
 procedure TFormInstall.CreateInstaller(const APath: string);
 var
   I: Integer;
@@ -293,6 +303,7 @@ begin
               'GIT: ' + FInstaller.ComponentPackages[I].Git;
         end;
     end;
+  chkSelectAllNone.Checked := True;
 end;
 
 procedure TFormInstall.FillRadioGroup;
@@ -499,7 +510,7 @@ begin
 
   aFinish.Visible := True;
   aSaveLog.Visible := True;
-  aBack.Visible := False;
+//  aBack.Visible := False;
   aNext.Visible := False;
   aCancel.Visible := False;
   Application.ProcessMessages;

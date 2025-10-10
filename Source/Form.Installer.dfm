@@ -20,7 +20,7 @@ object FormInstall: TFormInstall
     Top = 60
     Width = 495
     Height = 265
-    ActivePage = tshInstallation
+    ActivePage = tshSelectComponents
     Align = alClient
     Style = tsFlatButtons
     TabOrder = 0
@@ -51,7 +51,7 @@ object FormInstall: TFormInstall
         OnMeasureItem = clbSelectComponentsMeasureItem
       end
       object chkGetFromGit: TCheckBox
-        Left = 8
+        Left = 231
         Top = 231
         Width = 249
         Height = 17
@@ -59,6 +59,15 @@ object FormInstall: TFormInstall
         Caption = 'Get files from GIT repository when available'
         Enabled = False
         TabOrder = 1
+      end
+      object chkSelectAllNone: TCheckBox
+        Left = 8
+        Top = 231
+        Width = 97
+        Height = 17
+        Caption = 'Select all/none'
+        TabOrder = 2
+        OnClick = chkSelectAllNoneClick
       end
     end
     object tshSelectIde: TTabSheet
