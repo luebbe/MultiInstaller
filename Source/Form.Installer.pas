@@ -53,7 +53,6 @@ type
     aSaveLog: TAction;
     aFinish: TAction;
     rgSelectIde: TRadioGroup;
-    chkCompileInIde: TCheckBox;
     lblInstallation: TLabel;
     lblInstallationFinished: TLabel;
     bvlTop: TBevel;
@@ -73,7 +72,6 @@ type
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure FormShow(Sender: TObject);
-    procedure chkCompileInIdeClick(Sender: TObject);
     procedure clbSelectComponentsDrawItem(Control: TWinControl; Index: Integer;
       Rect: TRect; State: TOwnerDrawState);
     procedure clbSelectComponentsMeasureItem(Control: TWinControl;
@@ -85,6 +83,7 @@ type
     procedure chkSelectAllNoneClick(Sender: TObject);
   private
     FAppPath  : string;
+    FIniPath  : string;
     FAutoStart: Boolean;
     FInstaller: TSpMultiInstaller;
 
@@ -93,8 +92,8 @@ type
     function ValidateCheckListBox: Boolean;
 
     procedure CloseDelphi;
-    procedure CreateInstaller(const APath: string);
-    procedure EnableNavigationActons(AEnable: Boolean);
+    procedure CreateInstaller;
+    procedure EnableNavigationActions(AEnable: Boolean);
     procedure FillCheckListBox;
     procedure FillRadioGroup;
     procedure WMDROPFILES(var Msg: TWMDropFiles); message WM_DROPFILES;
@@ -156,9 +155,10 @@ begin
 
   // Allow to pass the ini file via command line
   if FindCmdLineSwitch('I', LSetupIni) then
-    CreateInstaller(LSetupIni)
+    FIniPath := LSetupIni
   else
-    CreateInstaller(FAppPath + rvSetupIni);
+    FIniPath := FAppPath + rvSetupIni;
+  CreateInstaller;
 
 {$IFDEF SPDEBUGMODE}
   ReportMemoryLeaksOnShutdown := True;
@@ -177,7 +177,7 @@ begin
   if DirectoryExists(FInstaller.ComponentPackages.DefaultInstallFolder) then
     begin
       edtInstallFolder.Text := FInstaller.ComponentPackages.DefaultInstallFolder;
-      if FAutoStart and chkCompileInIde.Checked then
+      if FAutoStart then
         begin
           PageControl1.ActivePageIndex := PageControl1.PageCount - 1;
           Timer1.Enabled := True; // Delay it a little for UI responsiveness
@@ -225,7 +225,10 @@ begin
   btnBack.Enabled := I > 0;
   case I of
     0:
-      lblTitle.Caption := SWelcomeTitle;
+      begin
+        lblTitle.Caption := SWelcomeTitle;
+        CreateInstaller;
+      end;
     1:
       lblTitle.Caption := SDestinationTitle;
     2:
@@ -238,11 +241,6 @@ begin
   end;
 end;
 
-procedure TFormInstall.chkCompileInIdeClick(Sender: TObject);
-begin
-  rgSelectIde.Enabled := chkCompileInIde.Checked;
-end;
-
 procedure TFormInstall.chkSelectAllNoneClick(Sender: TObject);
 var
   I: Integer;
@@ -251,13 +249,13 @@ begin
     clbSelectComponents.Checked[I] := chkSelectAllNone.Checked;
 end;
 
-procedure TFormInstall.CreateInstaller(const APath: string);
+procedure TFormInstall.CreateInstaller;
 var
   I: Integer;
 begin
   FreeAndNil(FInstaller);
 
-  FInstaller := TSpMultiInstaller.Create(APath);
+  FInstaller := TSpMultiInstaller.Create(FIniPath);
   FillCheckListBox;
   FillRadioGroup;
   ValidateCheckListBox;
@@ -275,7 +273,7 @@ begin
     edtInstallFolder.Text := FInstaller.ComponentPackages.DefaultInstallFolder;
 end;
 
-procedure TFormInstall.EnableNavigationActons(AEnable: Boolean);
+procedure TFormInstall.EnableNavigationActions(AEnable: Boolean);
 begin
   aFinish.Visible := not AEnable;
   aSaveLog.Visible := not AEnable;
@@ -332,9 +330,7 @@ begin
         end;
 
   if rgSelectIde.ItemIndex = -1 then
-    rgSelectIde.ItemIndex := rgSelectIde.Items.Count - 1
-  else
-    chkCompileInIde.Checked := True;
+    rgSelectIde.ItemIndex := rgSelectIde.Items.Count - 1;
 end;
 
 function TFormInstall.ValidateCheckListBox: Boolean;
@@ -373,7 +369,10 @@ begin
         DragQueryFile(LDropHandle, 0, PChar(LFileName), FileNameLength + 1);
         LFileExt := ExtractFileExt(LFileName);
         if SameText(LFileExt, '.ini') then
-          CreateInstaller(LFileName);
+        begin
+          FIniPath := LFileName;
+          CreateInstaller;
+        end;
       end;
 
   finally
@@ -431,7 +430,8 @@ end;
 procedure TFormInstall.aBackExecute(Sender: TObject);
 begin
   ChangePage(False);
-  EnableNavigationActons(True);
+  EnableNavigationActions(True);
+  lblInstallationFinished.Visible := False;
 end;
 
 procedure TFormInstall.aNextExecute(Sender: TObject);
@@ -494,7 +494,7 @@ begin
   // Get IDE version
   IDE := ideNone;
   I := rgSelectIde.ItemIndex;
-  if chkCompileInIde.Checked and (I > -1) and Assigned(rgSelectIde.Items.Objects[I]) then
+  if (I > -1) and Assigned(rgSelectIde.Items.Objects[I]) then
     IDE := TSpIDEType(rgSelectIde.Items.Objects[I]);
 
   // Delete unchecked components from the ComponentPackages list
@@ -518,7 +518,7 @@ begin
           FInstaller.ComponentPackages[J].ZipFile := '';
     end;
 
-  EnableNavigationActons(False);
+  EnableNavigationActions(False);
   Application.ProcessMessages;
   try
     // Check, Unzip, Patch, Compile, Install

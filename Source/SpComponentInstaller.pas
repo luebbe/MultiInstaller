@@ -79,8 +79,8 @@ resourcestring
   SLogExecuting = 'Executing:' + sLineBreak + '     %s';
   SLogExtracting = 'Extracting:' + sLineBreak + '     %s' + sLineBreak + 'To:' + sLineBreak + '     %s';
   SLogGitCloning = 'Git cloning:' + sLineBreak + '     %s' + sLineBreak + 'To:' + sLineBreak + '     %s';
-  SLogCompiling = 'Compiling for %s' + sLineBreak + 'Package: %s';
-  SLogInstalling = 'Installing for %s' + sLineBreak + 'Package: %s';
+  SLogCompiling = 'Compiling %s package for %s' + sLineBreak + 'Package: %s';
+  SLogInstalling = 'Installing %s package for %s' + sLineBreak + 'Package: %s';
   SLogFinished = 'All the component packages have been successfully installed.' + sLineBreak + 'Elapsed time: %f secs.';
 
   SGitCloneCommand = 'GIT.EXE clone --verbose --progress "%s" "%s"';
@@ -323,8 +323,10 @@ type
     FDescription   : string;
     FLibSuffix     : string;
     FIDEVersion    : TSpIDEType;
+    function GetPackageType: string;
     procedure CreateAndCopyEmptyResIfNeeded;
     function RegisterPackage(APlatform: TSpPlatform; Log: TStrings): Boolean;
+    property PackageType: string read GetPackageType;
   public
     constructor Create(const Filename: string; IDE: TSpIDEType); virtual;
     function CompilePackage(APlatform: TSpPlatform; SourcesL, IncludesL, Log: TStrings; TempDir: string = ''): Boolean;
@@ -1223,6 +1225,16 @@ begin
     end;
 end;
 
+function TSpDelphiDPKFile.GetPackageType: string;
+begin
+  if OnlyRuntime then
+    Result := 'run time'
+  else if OnlyDesigntime then
+    Result := 'design time'
+  else
+    Result := 'unknown'
+end;
+
 function TSpDelphiDPKFile.CompilePackage(
   APlatform: TSpPlatform;
   SourcesL, IncludesL,
@@ -1347,7 +1359,7 @@ begin
       CreateAndCopyEmptyResIfNeeded;
 
       // Compile
-      SpWriteLog(Log, SLogCompiling, [APlatform.Name, FDPKFilename]);
+      SpWriteLog(Log, SLogCompiling, [PackageType, APlatform.Name, FDPKFilename]);
       try
         Result := SpExecuteDosCommand(CommandLine, WorkDir, DOSOutput) = 0;
         if Assigned(Log) then
@@ -1392,7 +1404,7 @@ begin
     begin
       if SpWriteRegValue(RegKey, BPL, FDescription) then
         begin
-          SpWriteLog(Log, SLogInstalling, [APlatform.Name, FDPKFilename]);
+          SpWriteLog(Log, SLogInstalling, [PackageType, APlatform.Name, FDPKFilename]);
           Result := True;
         end;
     end;

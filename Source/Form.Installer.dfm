@@ -65,6 +65,7 @@ object FormInstall: TFormInstall
         Top = 231
         Width = 97
         Height = 17
+        Anchors = [akLeft, akBottom]
         Caption = 'Select all/none'
         TabOrder = 2
         OnClick = chkSelectAllNoneClick
@@ -110,19 +111,9 @@ object FormInstall: TFormInstall
         Width = 473
         Height = 171
         Anchors = [akLeft, akTop, akRight, akBottom]
-        Caption = '  '
+        Caption = '  Select target IDE'
         Columns = 2
-        Enabled = False
         TabOrder = 2
-      end
-      object chkCompileInIde: TCheckBox
-        Left = 20
-        Top = 78
-        Width = 195
-        Height = 17
-        Caption = 'Compile packages and install in IDE'
-        TabOrder = 3
-        OnClick = chkCompileInIdeClick
       end
     end
     object tshInstallation: TTabSheet
