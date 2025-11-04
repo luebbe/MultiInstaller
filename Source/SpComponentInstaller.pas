@@ -68,6 +68,7 @@ resourcestring
   SLogCorruptedZip = 'Error: %s is corrupted.';
   SLogGitCloneFailed = 'Error: in Git clone %s';
   SLogGitNotInstalled = 'Error: Git not installed';
+  SLogErrorNoPackage = 'Error: No package defined for %s';
 
   SLogErrorCopying = 'Error copying %s to %s';
   SLogErrorDeleting = 'Error deleting %s';
@@ -330,14 +331,14 @@ type
   public
     constructor Create(const Filename: string; IDE: TSpIDEType); virtual;
     function CompilePackage(APlatform: TSpPlatform; SourcesL, IncludesL, Log: TStrings; TempDir: string = ''): Boolean;
-    property DPKFilename   : string read FDPKFilename;
-    property BPLFilename   : string read FBPLFilename;
-    property Exists        : Boolean read FExists;
-    property OnlyRuntime   : Boolean read FOnlyRuntime;
+    property DPKFilename: string read FDPKFilename;
+    property BPLFilename: string read FBPLFilename;
+    property Exists: Boolean read FExists;
+    property OnlyRuntime: Boolean read FOnlyRuntime;
     property OnlyDesigntime: Boolean read FOnlyDesigntime;
-    property Description   : string read FDescription;
-    property LibSuffix     : string read FLibSuffix;
-    property IDEVersion    : TSpIDEType read FIDEVersion;
+    property Description: string read FDescription;
+    property LibSuffix: string read FLibSuffix;
+    property IDEVersion: TSpIDEType read FIDEVersion;
   end;
 
   TSpDelphiDPKFilesList = class(TObjectList<TSpDelphiDPKFile>)
@@ -1727,18 +1728,24 @@ begin
                 IncludesL.CommaText := StringReplace(LComponent.Includes, rvBaseFolder, ExcludeTrailingPathDelimiter(BaseFolder), [rfReplaceAll, rfIgnoreCase]);
 
                 // Compile and Install
-                for LPackage in LPackageList do
+                if LPackageList.Count = 0 then
                   begin
-                    // Run- & design time packages for Win32
-                    if not LPackage.CompilePackage(pltWin32, SourcesL, IncludesL, Log, TempDir) then
-                      Exit;
-
-                    // Compile Run time packages for Win64
-                    // Starting from Delphi 13 compile also design packages
-                    if LPackage.OnlyRuntime or (IDE >= ideDelphiFlorence) then
-                      if not LPackage.CompilePackage(pltWin64, SourcesL, IncludesL, Log, TempDir) then
+                    SpWriteLog(Log, SLogErrorNoPackage, [IDETypes[IDE].IDEName]);
+                    Exit;
+                  end
+                else
+                  for LPackage in LPackageList do
+                    begin
+                      // Run- & design time packages for Win32
+                      if not LPackage.CompilePackage(pltWin32, SourcesL, IncludesL, Log, TempDir) then
                         Exit;
-                  end;
+
+                      // Compile Run time packages for Win64
+                      // Starting from Delphi 13 compile also design packages
+                      if LPackage.OnlyRuntime or (IDE >= ideDelphiFlorence) then
+                        if not LPackage.CompilePackage(pltWin64, SourcesL, IncludesL, Log, TempDir) then
+                          Exit;
+                    end;
 
               finally
                 IncludesL.Free;

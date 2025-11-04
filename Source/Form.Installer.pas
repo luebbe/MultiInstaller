@@ -93,9 +93,9 @@ type
 
     procedure CloseDelphi;
     procedure CreateInstaller;
-    procedure EnableNavigationActions(AEnable: Boolean);
     procedure FillCheckListBox;
     procedure FillRadioGroup;
+    procedure ShowNavigationActions(AFinalStep: Boolean);
     procedure WMDROPFILES(var Msg: TWMDropFiles); message WM_DROPFILES;
   end;
 
@@ -273,15 +273,6 @@ begin
     edtInstallFolder.Text := FInstaller.ComponentPackages.DefaultInstallFolder;
 end;
 
-procedure TFormInstall.EnableNavigationActions(AEnable: Boolean);
-begin
-  aFinish.Visible := not AEnable;
-  aSaveLog.Visible := not AEnable;
-  aBack.Enabled := AEnable;
-  aNext.Visible := AEnable;
-  aCancel.Visible := AEnable;
-end;
-
 procedure TFormInstall.FillCheckListBox;
 var
   I, G, P: Integer;
@@ -369,10 +360,10 @@ begin
         DragQueryFile(LDropHandle, 0, PChar(LFileName), FileNameLength + 1);
         LFileExt := ExtractFileExt(LFileName);
         if SameText(LFileExt, '.ini') then
-        begin
-          FIniPath := LFileName;
-          CreateInstaller;
-        end;
+          begin
+            FIniPath := LFileName;
+            CreateInstaller;
+          end;
       end;
 
   finally
@@ -423,6 +414,15 @@ begin
   SpOpenLink(rvMultiInstallerLink);
 end;
 
+procedure TFormInstall.ShowNavigationActions(AFinalStep: Boolean);
+begin
+  aFinish.Visible := AFinalStep;
+  aSaveLog.Visible := AFinalStep;
+  aNext.Visible := not AFinalStep;
+  aCancel.Visible := not AFinalStep;
+end;
+
+
 //WMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWM
 {$REGION 'Actions'}
 
@@ -430,7 +430,7 @@ end;
 procedure TFormInstall.aBackExecute(Sender: TObject);
 begin
   ChangePage(False);
-  EnableNavigationActions(True);
+  ShowNavigationActions(False);
   lblInstallationFinished.Visible := False;
 end;
 
@@ -518,7 +518,12 @@ begin
           FInstaller.ComponentPackages[J].ZipFile := '';
     end;
 
-  EnableNavigationActions(False);
+  ShowNavigationActions(True);
+  aBack.Enabled := False;
+  aFinish.Enabled := False;
+  aSaveLog.Enabled := False;
+  lblInstallationFinished.Visible := False;
+
   Application.ProcessMessages;
   try
     // Check, Unzip, Patch, Compile, Install
@@ -529,6 +534,7 @@ begin
     aBack.Enabled := True;
     aFinish.Enabled := True;
     aSaveLog.Enabled := True;
+    lblInstallationFinished.Visible := True;
     if not Result then
       begin
         lblInstallationFinished.Font.Color := clRed;
