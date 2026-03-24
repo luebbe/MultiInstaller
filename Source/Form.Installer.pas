@@ -126,7 +126,8 @@ resourcestring
   SFinishTitle = 'Completing the MultiInstaller Setup Wizard';
 
   SCloseDelphi = 'Close Delphi to continue.';
-  SErrorLabel = 'There were errors found in the setup, check the log.';
+  SInstallOk = 'Setup has finished installing the components on your computer. Click Finish to exit Setup.';
+  SInstallError = 'There were errors found in the setup, check the log.';
   SErrorInvalidBasePath = 'The directory doesn''t exist.';
 
 //WMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWMWM
@@ -535,10 +536,15 @@ begin
     aFinish.Enabled := True;
     aSaveLog.Enabled := True;
     lblInstallationFinished.Visible := True;
-    if not Result then
+    if Result then
+      begin
+        lblInstallationFinished.Font.Color := clWindowText;
+        lblInstallationFinished.Caption := SInstallOk;
+      end
+    else
       begin
         lblInstallationFinished.Font.Color := clRed;
-        lblInstallationFinished.Caption := SErrorLabel;
+        lblInstallationFinished.Caption := SInstallError;
       end;
     lblInstallationFinished.Visible := True;
   end;
